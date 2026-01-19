@@ -1,0 +1,1140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cotizaciones CF (sin servidor)</title>
+  <style>
+    :root{--bg:#0b1220;--card:#111b2e;--muted:#9db0d0;--text:#eef3ff;--accent:#4ea1ff;--danger:#ff5c6c;--ok:#43d39e;}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
+    body{margin:0;background:linear-gradient(180deg,#0b1220,#070b14);color:var(--text)}
+    header{position:sticky;top:0;z-index:5;background:rgba(7,11,20,.75);backdrop-filter: blur(8px);border-bottom:1px solid rgba(255,255,255,.08)}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    h1{font-size:18px;margin:0}
+    .pill{font-size:12px;color:var(--muted);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px}
+    .grid{display:grid;grid-template-columns: 320px 1fr;gap:16px;align-items:start}
+    @media (max-width: 980px){.grid{grid-template-columns:1fr}}
+    .card{background:rgba(17,27,46,.75);border:1px solid rgba(255,255,255,.10);border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.35)}
+    .card h2{font-size:14px;margin:0 0 10px 0;color:#d8e4ff}
+    .card .body{padding:14px}
+    label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+    input, select, textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(6,10,18,.7);color:var(--text)}
+    input::placeholder{color:#6f86ad}
+    textarea{min-height:76px;resize:vertical}
+    button{border:0;border-radius:12px;padding:10px 12px;background:rgba(78,161,255,.18);color:#d8eaff;border:1px solid rgba(78,161,255,.35);cursor:pointer}
+    button:hover{filter:brightness(1.06)}
+    button.secondary{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
+    button.danger{background:rgba(255,92,108,.15);border-color:rgba(255,92,108,.35)}
+    button.ok{background:rgba(67,211,158,.16);border-color:rgba(67,211,158,.35)}
+    .btnbar{display:flex;gap:10px;flex-wrap:wrap}
+    .muted{color:var(--muted);font-size:12px}
+    table{width:100%;border-collapse:separate;border-spacing:0}
+    th,td{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.10);font-size:13px}
+    th{color:#cfe1ff;text-align:left;font-weight:600}
+    td input{padding:8px 10px;border-radius:10px}
+    .right{text-align:right}
+    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .kpi .box{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(6,10,18,.55)}
+    .kpi .box b{display:block;font-size:16px}
+    .kpi .box span{font-size:12px;color:var(--muted)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .tab{padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#d9e6ff;font-size:12px;cursor:pointer}
+    .tab.active{border-color:rgba(78,161,255,.55);background:rgba(78,161,255,.16)}
+    .list{max-height:360px;overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px}
+    .list .item{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}
+    .list .item:hover{background:rgba(255,255,255,.05)}
+    .list .item small{display:block;color:var(--muted)}
+    .hidden{display:none}
+
+    /* Print */
+    @media print{
+      body{background:#fff;color:#000}
+      header,.no-print{display:none!important}
+      .card{box-shadow:none;border:0;background:#fff}
+      input,select,textarea{border:0;background:#fff;color:#000;padding:0}
+      .wrap{max-width:none}
+      .grid{grid-template-columns:1fr}
+      th,td{border-bottom:1px solid #ddd}
+    }
+  </style>
+  <!-- Optional: SheetJS (importar desde Excel) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js" defer></script>
+</head>
+<body>
+<header>
+  <div class="wrap row">
+    <h1>📄 Cotizaciones CF</h1>
+    <span class="pill">Funciona 100% en tu navegador • Sin servidor • Datos locales</span>
+    <span class="pill" id="statusPill">Inicializando…</span>
+    <div style="flex:1"></div>
+    <div class="btnbar">
+      <button class="secondary" id="btnBackup">Exportar respaldo (.json)</button>
+      <button class="secondary" id="btnRestore">Importar respaldo</button>
+      <input class="hidden" type="file" id="fileRestore" accept="application/json" />
+      <button class="secondary" id="btnImportExcel">Importar Clientes/Productos desde Excel</button>
+      <input class="hidden" type="file" id="fileExcel" accept=".xlsx,.xls" />
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="grid">
+    <!-- Lateral: navegación y listas -->
+    <section class="card no-print">
+      <div class="body">
+        <div class="tabs">
+          <div class="tab active" data-tab="cotizaciones">Cotizaciones</div>
+          <div class="tab" data-tab="clientes">Clientes</div>
+          <div class="tab" data-tab="productos">Productos</div>
+          <div class="tab" data-tab="config">Config</div>
+          <div class="tab" data-tab="usuarios">Usuarios</div>
+        </div>
+
+        <div id="pane-cotizaciones">
+          <div class="row" style="margin-bottom:8px">
+            <input id="qSearch" placeholder="Buscar (número, cliente, fecha)…" />
+            <button id="btnNewQuote" class="ok">+ Nueva</button>
+          </div>
+          <div class="list" id="qList"></div>
+        </div>
+
+        <div id="pane-clientes" class="hidden">
+          <div class="row" style="margin-bottom:8px">
+            <input id="cSearch" placeholder="Buscar cliente…" />
+            <button id="btnNewClient" class="ok">+ Nuevo</button>
+          </div>
+          <div class="list" id="cList"></div>
+        </div>
+
+        <div id="pane-productos" class="hidden">
+          <div class="row" style="margin-bottom:8px">
+            <input id="pSearch" placeholder="Buscar producto…" />
+            <button id="btnNewProduct" class="ok">+ Nuevo</button>
+          </div>
+          <div class="list" id="pList"></div>
+        </div>
+
+        <div id="pane-config" class="hidden">
+          <h2>Configuración</h2>
+          <label>Prefijo consecutivo</label>
+          <input id="cfgPrefix" placeholder="CF" />
+          <label>Longitud (ceros a la izquierda)</label>
+          <input id="cfgPad" type="number" min="2" max="10" />
+          <label>Consecutivo actual (se incrementa al guardar)</label>
+          <input id="cfgNext" type="number" min="1" />
+          <label>IVA (%)</label>
+          <input id="cfgIva" type="number" min="0" max="100" step="0.01" />
+          <label>Datos de la empresa (para impresión)</label>
+          <textarea id="cfgCompany" placeholder="CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"></textarea>
+          <div class="btnbar" style="margin-top:12px">
+            <button id="btnSaveConfig" class="ok">Guardar configuración</button>
+            <button id="btnFactoryReset" class="danger">Borrar TODO (reinicio)</button>
+          </div>
+          <p class="muted">Nota: todo se guarda localmente en este navegador. Para compartir entre equipos usa “Exportar respaldo”.</p>
+        </div>
+
+        <div id="pane-usuarios" class="hidden">
+          <h2>Usuarios (local)</h2>
+          <div class="muted">Esto es para controlar acceso básico en el mismo computador. No es seguridad empresarial (no hay servidor).</div>
+          <label>Usuario actual</label>
+          <select id="uCurrent"></select>
+          <label>Contraseña</label>
+          <input id="uPass" type="password" placeholder="••••••" />
+          <div class="btnbar" style="margin-top:10px">
+            <button id="btnLogin" class="ok">Ingresar</button>
+            <button id="btnLogout" class="secondary">Salir</button>
+          </div>
+          <hr style="border-color:rgba(255,255,255,.12);margin:14px 0">
+          <h2>Crear / editar usuario</h2>
+          <label>Nombre</label>
+          <input id="uName" placeholder="Ej: Facturación" />
+          <label>Rol</label>
+          <select id="uRole">
+            <option value="admin">admin</option>
+            <option value="user">user</option>
+          </select>
+          <label>Nueva contraseña</label>
+          <input id="uNewPass" type="password" placeholder="(deja vacío para no cambiar)" />
+          <div class="btnbar" style="margin-top:10px">
+            <button id="btnSaveUser" class="ok">Guardar usuario</button>
+            <button id="btnDeleteUser" class="danger">Eliminar usuario</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Principal: editor de cotización / cliente / producto -->
+    <section class="card">
+      <div class="body">
+        <div id="editor-empty">
+          <h2>Selecciona algo a la izquierda</h2>
+          <p class="muted">Crea una nueva cotización, o edita clientes/productos. Puedes imprimir o guardar en PDF con el botón de imprimir.</p>
+        </div>
+
+        <!-- Editor Cotización -->
+        <div id="editor-quote" class="hidden">
+          <div class="row" style="justify-content:space-between;gap:10px">
+            <div>
+              <h2 id="qTitle">Cotización</h2>
+              <div class="muted" id="qMeta"></div>
+            </div>
+            <div class="btnbar no-print">
+              <button id="btnPrint" class="secondary">Imprimir / PDF</button>
+              <button id="btnSaveQuote" class="ok">Guardar</button>
+              <button id="btnDeleteQuote" class="danger">Eliminar</button>
+            </div>
+          </div>
+
+          <div style="margin:10px 0 12px" class="kpi">
+            <div class="box"><span>Subtotal</span><b id="kpiSubtotal">$0</b></div>
+            <div class="box"><span>IVA</span><b id="kpiIva">$0</b></div>
+            <div class="box"><span>Total</span><b id="kpiTotal">$0</b></div>
+          </div>
+
+          <div class="row" style="gap:14px">
+            <div style="flex:1">
+              <label>Fecha</label>
+              <input id="qDate" type="date" />
+            </div>
+            <div style="flex:1">
+              <label>Número de cotización</label>
+              <input id="qNumber" placeholder="CF0001-2026" />
+            </div>
+          </div>
+
+          <div class="row" style="gap:14px">
+            <div style="flex:1">
+              <label>Código/Documento del cliente</label>
+              <input id="qClientId" placeholder="Ej: 1088323837" list="dlClients" />
+              <datalist id="dlClients"></datalist>
+            </div>
+            <div style="flex:2">
+              <label>Cliente</label>
+              <input id="qClientName" placeholder="(autocompleta)" />
+            </div>
+          </div>
+
+          <div class="row" style="gap:14px">
+            <div style="flex:2">
+              <label>Dirección</label>
+              <input id="qClientAddr" />
+            </div>
+            <div style="flex:1">
+              <label>RFC/NIT</label>
+              <input id="qClientRfc" />
+            </div>
+          </div>
+
+          <label>Ítems</label>
+          <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px">
+            <table id="itemsTable">
+              <thead>
+                <tr>
+                  <th style="width:90px">Cant.</th>
+                  <th style="width:130px">Código</th>
+                  <th>Descripción</th>
+                  <th style="width:140px" class="right">P. Unitario</th>
+                  <th style="width:140px" class="right">Importe</th>
+                  <th style="width:60px" class="no-print"></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="btnbar no-print" style="margin-top:10px">
+            <button id="btnAddItem" class="secondary">+ Agregar ítem</button>
+          </div>
+
+          <label>Notas</label>
+          <textarea id="qNotes" placeholder="Condiciones, vigencia, observaciones…"></textarea>
+
+          <div style="margin-top:10px">
+            <div class="muted" id="printHeader"></div>
+          </div>
+        </div>
+
+        <!-- Editor Cliente -->
+        <div id="editor-client" class="hidden">
+          <div class="row" style="justify-content:space-between;gap:10px">
+            <div>
+              <h2 id="cTitle">Cliente</h2>
+              <div class="muted" id="cMeta"></div>
+            </div>
+            <div class="btnbar no-print">
+              <button id="btnSaveClient" class="ok">Guardar</button>
+              <button id="btnDeleteClient" class="danger">Eliminar</button>
+            </div>
+          </div>
+          <label>Número / Documento</label>
+          <input id="cId" />
+          <label>Nombre</label>
+          <input id="cName" />
+          <label>Dirección</label>
+          <input id="cAddr" />
+          <label>RFC/NIT</label>
+          <input id="cRfc" />
+        </div>
+
+        <!-- Editor Producto -->
+        <div id="editor-product" class="hidden">
+          <div class="row" style="justify-content:space-between;gap:10px">
+            <div>
+              <h2 id="pTitle">Producto / Servicio</h2>
+              <div class="muted" id="pMeta"></div>
+            </div>
+            <div class="btnbar no-print">
+              <button id="btnSaveProduct" class="ok">Guardar</button>
+              <button id="btnDeleteProduct" class="danger">Eliminar</button>
+            </div>
+          </div>
+          <label>Código</label>
+          <input id="pId" />
+          <label>Descripción</label>
+          <input id="pDesc" />
+          <label>Precio de venta</label>
+          <input id="pPrice" type="number" step="0.01" />
+        </div>
+
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+  // -------------------- Utils --------------------
+  const $ = (id)=>document.getElementById(id);
+  const fmtMoney = (n)=>{
+    const v = Number(n||0);
+    return v.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:2});
+  };
+  const todayISO = ()=> new Date().toISOString().slice(0,10);
+  const nowISO = ()=> new Date().toISOString();
+
+  // Simple SHA-256 for local passwords
+  async function sha256(text){
+    const enc = new TextEncoder().encode(text);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // -------------------- IndexedDB --------------------
+  const DB_NAME = 'cotizaciones_cf_v1';
+  const DB_VERSION = 1;
+  let db;
+
+  function idbOpen(){
+    return new Promise((resolve,reject)=>{
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = ()=>{
+        const d = req.result;
+        const mk = (name, keyPath)=>{
+          if(!d.objectStoreNames.contains(name)) d.createObjectStore(name,{keyPath});
+        };
+        mk('settings','id');
+        mk('clients','id');
+        mk('products','id');
+        mk('quotes','id');
+        mk('users','id');
+      };
+      req.onsuccess = ()=> resolve(req.result);
+      req.onerror = ()=> reject(req.error);
+    });
+  }
+
+  function tx(storeName, mode='readonly'){
+    return db.transaction(storeName, mode).objectStore(storeName);
+  }
+
+  function idbGet(store, key){
+    return new Promise((resolve,reject)=>{
+      const r = tx(store).get(key);
+      r.onsuccess = ()=>resolve(r.result||null);
+      r.onerror = ()=>reject(r.error);
+    });
+  }
+  function idbPut(store, val){
+    return new Promise((resolve,reject)=>{
+      const r = tx(store,'readwrite').put(val);
+      r.onsuccess = ()=>resolve(true);
+      r.onerror = ()=>reject(r.error);
+    });
+  }
+  function idbDel(store, key){
+    return new Promise((resolve,reject)=>{
+      const r = tx(store,'readwrite').delete(key);
+      r.onsuccess = ()=>resolve(true);
+      r.onerror = ()=>reject(r.error);
+    });
+  }
+  function idbAll(store){
+    return new Promise((resolve,reject)=>{
+      const r = tx(store).getAll();
+      r.onsuccess = ()=>resolve(r.result||[]);
+      r.onerror = ()=>reject(r.error);
+    });
+  }
+
+  // -------------------- State --------------------
+  let SETTINGS = null;
+  let SESSION = { user:null };
+  let CURRENT = { type:null, id:null }; // quote|client|product
+
+  const defaultSettings = ()=>({
+    id:'singleton',
+    prefix:'CF',
+    pad:4,
+    nextSeq:1,
+    ivaPct:0,
+    company:"CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
+  });
+
+  const defaultAdminUser = async ()=>({
+    id:'admin',
+    name:'Administrador',
+    role:'admin',
+    passHash: await sha256('admin')
+  });
+
+  function year(){ return new Date().getFullYear(); }
+  function makeQuoteNumber(seq){
+    const s = String(seq).padStart(Number(SETTINGS.pad||4), '0');
+    return `${SETTINGS.prefix}${s}-${year()}`;
+  }
+
+  function assertRole(required){
+    if(!SESSION.user){ throw new Error('Debes iniciar sesión.'); }
+    if(required==='admin' && SESSION.user.role!=='admin'){
+      throw new Error('Se requiere rol admin.');
+    }
+  }
+
+  // -------------------- UI: Tabs --------------------
+  function setTab(name){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+    ['cotizaciones','clientes','productos','config','usuarios'].forEach(k=>{
+      $('pane-'+k).classList.toggle('hidden', k!==name);
+    });
+  }
+
+  // -------------------- Lists --------------------
+  async function refreshDatalists(){
+    const clients = await idbAll('clients');
+    const dl = $('dlClients');
+    dl.innerHTML='';
+    clients.slice(0,5000).forEach(c=>{
+      const opt=document.createElement('option');
+      opt.value=c.id;
+      opt.label=c.name;
+      dl.appendChild(opt);
+    });
+
+    // For item codes, we use datalist dynamically per row
+  }
+
+  async function refreshLists(){
+    const [quotes, clients, products] = await Promise.all([
+      idbAll('quotes'), idbAll('clients'), idbAll('products')
+    ]);
+
+    // Quotes
+    const qTerm = $('qSearch').value.trim().toLowerCase();
+    const qList = $('qList');
+    qList.innerHTML='';
+    quotes
+      .sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''))
+      .filter(q=>{
+        if(!qTerm) return true;
+        const hay = `${q.number} ${q.client?.name||''} ${q.date||''}`.toLowerCase();
+        return hay.includes(qTerm);
+      })
+      .forEach(q=>{
+        const div=document.createElement('div');
+        div.className='item';
+        div.onclick=()=>openQuote(q.id);
+        div.innerHTML = `<b>${q.number||'(sin número)'}</b> <small>${q.date||''} • ${q.client?.name||''}</small>`;
+        qList.appendChild(div);
+      });
+
+    // Clients
+    const cTerm = $('cSearch').value.trim().toLowerCase();
+    const cList = $('cList');
+    cList.innerHTML='';
+    clients
+      .sort((a,b)=> (a.name||'').localeCompare(b.name||''))
+      .filter(c=>{
+        if(!cTerm) return true;
+        const hay = `${c.id} ${c.name} ${c.addr||''} ${c.rfc||''}`.toLowerCase();
+        return hay.includes(cTerm);
+      })
+      .forEach(c=>{
+        const div=document.createElement('div');
+        div.className='item';
+        div.onclick=()=>openClient(c.id);
+        div.innerHTML = `<b>${c.name||'(sin nombre)'}</b> <small>${c.id} • ${c.rfc||''}</small>`;
+        cList.appendChild(div);
+      });
+
+    // Products
+    const pTerm = $('pSearch').value.trim().toLowerCase();
+    const pList = $('pList');
+    pList.innerHTML='';
+    products
+      .sort((a,b)=> (a.desc||'').localeCompare(b.desc||''))
+      .filter(p=>{
+        if(!pTerm) return true;
+        const hay = `${p.id} ${p.desc} ${p.price}`.toLowerCase();
+        return hay.includes(pTerm);
+      })
+      .forEach(p=>{
+        const div=document.createElement('div');
+        div.className='item';
+        div.onclick=()=>openProduct(p.id);
+        div.innerHTML = `<b>${p.desc||'(sin descripción)'}</b> <small>${p.id} • ${fmtMoney(p.price||0)}</small>`;
+        pList.appendChild(div);
+      });
+
+    await refreshDatalists();
+  }
+
+  // -------------------- Editor switching --------------------
+  function showEditor(which){
+    $('editor-empty').classList.toggle('hidden', which!=='empty');
+    $('editor-quote').classList.toggle('hidden', which!=='quote');
+    $('editor-client').classList.toggle('hidden', which!=='client');
+    $('editor-product').classList.toggle('hidden', which!=='product');
+  }
+
+  // -------------------- Quote editor --------------------
+  function emptyItem(){
+    return { qty:1, code:'', desc:'', unit:0, amount:0 };
+  }
+
+  async function newQuote(){
+    assertRole('user');
+    const seq = Number(SETTINGS.nextSeq||1);
+    const q = {
+      id: crypto.randomUUID(),
+      number: makeQuoteNumber(seq),
+      date: todayISO(),
+      client: { id:'', name:'', addr:'', rfc:'' },
+      items: Array.from({length:3}, ()=>emptyItem()),
+      notes:'',
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
+      createdBy: SESSION.user?.id||'unknown'
+    };
+    CURRENT={type:'quote', id:q.id};
+    renderQuote(q);
+    showEditor('quote');
+  }
+
+  async function openQuote(id){
+    const q = await idbGet('quotes', id);
+    if(!q) return;
+    CURRENT={type:'quote', id};
+    renderQuote(q);
+    showEditor('quote');
+  }
+
+  function calcTotals(q){
+    let subtotal=0;
+    q.items.forEach(it=>{
+      const qty = Number(it.qty||0);
+      const unit = Number(it.unit||0);
+      const amount = qty*unit;
+      it.amount = isFinite(amount)? amount : 0;
+      subtotal += it.amount;
+    });
+    const iva = subtotal * (Number(SETTINGS.ivaPct||0)/100);
+    const total = subtotal + iva;
+    return {subtotal, iva, total};
+  }
+
+  async function productByCode(code){
+    if(!code) return null;
+    return await idbGet('products', String(code).trim());
+  }
+  async function clientById(id){
+    if(!id) return null;
+    return await idbGet('clients', String(id).trim());
+  }
+
+  function renderItems(q){
+    const tbody = $('itemsTable').querySelector('tbody');
+    tbody.innerHTML='';
+    q.items.forEach((it, idx)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML = `
+        <td><input data-k="qty" data-i="${idx}" type="number" min="0" step="0.01" value="${it.qty??''}"></td>
+        <td><input data-k="code" data-i="${idx}" value="${it.code??''}" placeholder="Código" list="dlProd-${idx}"><datalist id="dlProd-${idx}"></datalist></td>
+        <td><input data-k="desc" data-i="${idx}" value="${it.desc??''}" placeholder="Descripción"></td>
+        <td class="right"><input data-k="unit" data-i="${idx}" type="number" min="0" step="0.01" value="${it.unit??''}"></td>
+        <td class="right"><span>${fmtMoney(it.amount||0)}</span></td>
+        <td class="no-print"><button class="danger" data-act="del" data-i="${idx}" title="Eliminar">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+
+      // fill datalist options (lightweight)
+      idbAll('products').then(products=>{
+        const dl = tr.querySelector(`#dlProd-${idx}`);
+        dl.innerHTML='';
+        products.slice(0,5000).forEach(p=>{
+          const opt=document.createElement('option');
+          opt.value=p.id;
+          opt.label=p.desc;
+          dl.appendChild(opt);
+        });
+      });
+    });
+
+    // event delegation
+    tbody.querySelectorAll('input').forEach(inp=>{
+      inp.onchange = async (e)=>{
+        const i = Number(e.target.dataset.i);
+        const k = e.target.dataset.k;
+        q.items[i][k] = e.target.value;
+
+        // auto from product
+        if(k==='code'){
+          const prod = await productByCode(e.target.value);
+          if(prod){
+            q.items[i].desc = prod.desc || '';
+            q.items[i].unit = Number(prod.price||0);
+          }
+        }
+
+        // normalize numbers
+        if(k==='qty' || k==='unit') q.items[i][k] = Number(e.target.value||0);
+
+        updateQuoteUI(q);
+        renderItems(q); // re-render to update derived cells
+      };
+    });
+
+    tbody.querySelectorAll('button[data-act="del"]').forEach(btn=>{
+      btn.onclick=()=>{
+        q.items.splice(Number(btn.dataset.i),1);
+        if(q.items.length===0) q.items.push(emptyItem());
+        updateQuoteUI(q);
+        renderItems(q);
+      };
+    });
+  }
+
+  function updateQuoteUI(q){
+    const t = calcTotals(q);
+    $('kpiSubtotal').textContent = fmtMoney(t.subtotal);
+    $('kpiIva').textContent = fmtMoney(t.iva);
+    $('kpiTotal').textContent = fmtMoney(t.total);
+    $('printHeader').textContent = SETTINGS.company;
+  }
+
+  function renderQuote(q){
+    $('qTitle').textContent = `Cotización ${q.number||''}`;
+    $('qMeta').textContent = `Creada: ${q.createdAt?.slice(0,10)||''} • Por: ${q.createdBy||''}`;
+
+    $('qDate').value = q.date || todayISO();
+    $('qNumber').value = q.number || '';
+
+    $('qClientId').value = q.client?.id || '';
+    $('qClientName').value = q.client?.name || '';
+    $('qClientAddr').value = q.client?.addr || '';
+    $('qClientRfc').value = q.client?.rfc || '';
+
+    $('qNotes').value = q.notes || '';
+
+    $('qDate').onchange = ()=>{ q.date = $('qDate').value; q.updatedAt = nowISO(); updateQuoteUI(q); };
+    $('qNumber').onchange = ()=>{ q.number = $('qNumber').value.trim(); q.updatedAt = nowISO(); };
+
+    $('qClientId').onchange = async ()=>{
+      q.client.id = $('qClientId').value.trim();
+      const c = await clientById(q.client.id);
+      if(c){
+        q.client.name = c.name||'';
+        q.client.addr = c.addr||'';
+        q.client.rfc = c.rfc||'';
+      }
+      $('qClientName').value = q.client.name;
+      $('qClientAddr').value = q.client.addr;
+      $('qClientRfc').value = q.client.rfc;
+      q.updatedAt = nowISO();
+    };
+    $('qClientName').onchange = ()=>{ q.client.name = $('qClientName').value; q.updatedAt = nowISO(); };
+    $('qClientAddr').onchange = ()=>{ q.client.addr = $('qClientAddr').value; q.updatedAt = nowISO(); };
+    $('qClientRfc').onchange = ()=>{ q.client.rfc = $('qClientRfc').value; q.updatedAt = nowISO(); };
+    $('qNotes').onchange = ()=>{ q.notes = $('qNotes').value; q.updatedAt = nowISO(); };
+
+    renderItems(q);
+    updateQuoteUI(q);
+
+    $('btnAddItem').onclick = ()=>{ q.items.push(emptyItem()); renderItems(q); updateQuoteUI(q); };
+
+    $('btnSaveQuote').onclick = async ()=>{
+      try{
+        assertRole('user');
+        // increment seq only if new number matches current next
+        const isNew = !(await idbGet('quotes', q.id));
+
+        q.number = $('qNumber').value.trim() || q.number;
+        q.date = $('qDate').value || q.date;
+        q.updatedAt = nowISO();
+
+        // ensure items trimmed
+        q.items = q.items
+          .map(it=>({
+            qty:Number(it.qty||0),
+            code:String(it.code||'').trim(),
+            desc:String(it.desc||'').trim(),
+            unit:Number(it.unit||0),
+            amount:Number(it.amount||0)
+          }))
+          .filter(it=> it.code || it.desc );
+        if(q.items.length===0) q.items=[emptyItem()];
+
+        await idbPut('quotes', q);
+
+        if(isNew){
+          SETTINGS.nextSeq = Number(SETTINGS.nextSeq||1) + 1;
+          await idbPut('settings', SETTINGS);
+        }
+
+        await refreshLists();
+        $('statusPill').textContent='Guardado ✓';
+        $('statusPill').style.color='var(--ok)';
+        setTimeout(()=>{ $('statusPill').textContent='Listo'; $('statusPill').style.color=''; }, 900);
+      }catch(err){
+        alert(err.message||String(err));
+      }
+    };
+
+    $('btnDeleteQuote').onclick = async ()=>{
+      try{
+        assertRole('user');
+        if(!confirm('¿Eliminar esta cotización?')) return;
+        await idbDel('quotes', q.id);
+        CURRENT={type:null,id:null};
+        showEditor('empty');
+        await refreshLists();
+      }catch(err){ alert(err.message||String(err)); }
+    };
+
+    $('btnPrint').onclick = ()=>{
+      // Show printable company header within editor
+      $('printHeader').textContent = SETTINGS.company;
+      window.print();
+    };
+  }
+
+  // -------------------- Client editor --------------------
+  async function newClient(){
+    assertRole('user');
+    const c = { id:'', name:'', addr:'', rfc:'', createdAt:nowISO(), updatedAt:nowISO() };
+    CURRENT={type:'client', id:null};
+    renderClient(c);
+    showEditor('client');
+  }
+
+  async function openClient(id){
+    const c = await idbGet('clients', id);
+    if(!c) return;
+    CURRENT={type:'client', id};
+    renderClient(c);
+    showEditor('client');
+  }
+
+  function renderClient(c){
+    $('cTitle').textContent = c.id? `Cliente ${c.name||''}` : 'Nuevo cliente';
+    $('cMeta').textContent = c.id? `Última actualización: ${c.updatedAt?.slice(0,10)||''}` : '—';
+    $('cId').value = c.id || '';
+    $('cName').value = c.name || '';
+    $('cAddr').value = c.addr || '';
+    $('cRfc').value = c.rfc || '';
+
+    $('btnSaveClient').onclick = async ()=>{
+      try{
+        assertRole('user');
+        const id = $('cId').value.trim();
+        if(!id) throw new Error('El número/documento es obligatorio.');
+        const obj = {
+          id,
+          name:$('cName').value.trim(),
+          addr:$('cAddr').value.trim(),
+          rfc:$('cRfc').value.trim(),
+          createdAt: c.createdAt || nowISO(),
+          updatedAt: nowISO()
+        };
+        await idbPut('clients', obj);
+        CURRENT={type:'client', id};
+        await refreshLists();
+        await refreshDatalists();
+      }catch(err){ alert(err.message||String(err)); }
+    };
+
+    $('btnDeleteClient').onclick = async ()=>{
+      try{
+        assertRole('user');
+        const id = $('cId').value.trim();
+        if(!id) return;
+        if(!confirm('¿Eliminar este cliente?')) return;
+        await idbDel('clients', id);
+        CURRENT={type:null,id:null};
+        showEditor('empty');
+        await refreshLists();
+      }catch(err){ alert(err.message||String(err)); }
+    };
+  }
+
+  // -------------------- Product editor --------------------
+  async function newProduct(){
+    assertRole('user');
+    const p = { id:'', desc:'', price:0, createdAt:nowISO(), updatedAt:nowISO() };
+    CURRENT={type:'product', id:null};
+    renderProduct(p);
+    showEditor('product');
+  }
+
+  async function openProduct(id){
+    const p = await idbGet('products', id);
+    if(!p) return;
+    CURRENT={type:'product', id};
+    renderProduct(p);
+    showEditor('product');
+  }
+
+  function renderProduct(p){
+    $('pTitle').textContent = p.id? `Producto ${p.id}` : 'Nuevo producto / servicio';
+    $('pMeta').textContent = p.id? `Última actualización: ${p.updatedAt?.slice(0,10)||''}` : '—';
+    $('pId').value = p.id || '';
+    $('pDesc').value = p.desc || '';
+    $('pPrice').value = p.price ?? 0;
+
+    $('btnSaveProduct').onclick = async ()=>{
+      try{
+        assertRole('user');
+        const id = $('pId').value.trim();
+        if(!id) throw new Error('El código es obligatorio.');
+        const obj = {
+          id,
+          desc:$('pDesc').value.trim(),
+          price:Number($('pPrice').value||0),
+          createdAt: p.createdAt || nowISO(),
+          updatedAt: nowISO()
+        };
+        await idbPut('products', obj);
+        CURRENT={type:'product', id};
+        await refreshLists();
+      }catch(err){ alert(err.message||String(err)); }
+    };
+
+    $('btnDeleteProduct').onclick = async ()=>{
+      try{
+        assertRole('user');
+        const id = $('pId').value.trim();
+        if(!id) return;
+        if(!confirm('¿Eliminar este producto?')) return;
+        await idbDel('products', id);
+        CURRENT={type:null,id:null};
+        showEditor('empty');
+        await refreshLists();
+      }catch(err){ alert(err.message||String(err)); }
+    };
+  }
+
+  // -------------------- Config --------------------
+  function loadConfigUI(){
+    $('cfgPrefix').value = SETTINGS.prefix || 'CF';
+    $('cfgPad').value = SETTINGS.pad || 4;
+    $('cfgNext').value = SETTINGS.nextSeq || 1;
+    $('cfgIva').value = SETTINGS.ivaPct || 0;
+    $('cfgCompany').value = SETTINGS.company || '';
+  }
+
+  async function saveConfig(){
+    try{
+      assertRole('admin');
+      SETTINGS.prefix = $('cfgPrefix').value.trim() || 'CF';
+      SETTINGS.pad = Number($('cfgPad').value||4);
+      SETTINGS.nextSeq = Number($('cfgNext').value||1);
+      SETTINGS.ivaPct = Number($('cfgIva').value||0);
+      SETTINGS.company = $('cfgCompany').value || '';
+      await idbPut('settings', SETTINGS);
+      alert('Configuración guardada.');
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  async function factoryReset(){
+    try{
+      assertRole('admin');
+      if(!confirm('Esto borrará clientes, productos, cotizaciones y usuarios (excepto se recreará admin/admin). ¿Continuar?')) return;
+      await new Promise((resolve,reject)=>{
+        const r = indexedDB.deleteDatabase(DB_NAME);
+        r.onsuccess=()=>resolve(true);
+        r.onerror=()=>reject(r.error);
+      });
+      location.reload();
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  // -------------------- Users --------------------
+  async function refreshUsersUI(){
+    const users = await idbAll('users');
+    const sel = $('uCurrent');
+    sel.innerHTML='';
+    users.forEach(u=>{
+      const opt=document.createElement('option');
+      opt.value=u.id;
+      opt.textContent=`${u.name} (${u.role})`;
+      sel.appendChild(opt);
+    });
+  }
+
+  async function login(){
+    const userId = $('uCurrent').value;
+    const pass = $('uPass').value;
+    const user = await idbGet('users', userId);
+    if(!user) return alert('Usuario no existe.');
+    const hash = await sha256(pass);
+    if(hash !== user.passHash) return alert('Contraseña incorrecta.');
+    SESSION.user = { id:user.id, name:user.name, role:user.role };
+    $('statusPill').textContent = `Sesión: ${user.name} (${user.role})`;
+    $('statusPill').style.color = 'var(--accent)';
+    $('uPass').value='';
+  }
+
+  async function logout(){
+    SESSION.user=null;
+    $('statusPill').textContent='Sin sesión';
+    $('statusPill').style.color='';
+  }
+
+  async function saveUser(){
+    try{
+      assertRole('admin');
+      const sel = $('uCurrent');
+      const existing = await idbGet('users', sel.value);
+
+      const name = $('uName').value.trim();
+      if(!name) throw new Error('Nombre requerido.');
+
+      const role = $('uRole').value;
+      const newPass = $('uNewPass').value;
+
+      const id = existing?.id || name.toLowerCase().replace(/\s+/g,'_').slice(0,40);
+      const obj = {
+        id,
+        name,
+        role,
+        passHash: existing?.passHash || await sha256('1234')
+      };
+      if(newPass) obj.passHash = await sha256(newPass);
+
+      await idbPut('users', obj);
+      await refreshUsersUI();
+      sel.value = id;
+      alert('Usuario guardado.');
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  async function deleteUser(){
+    try{
+      assertRole('admin');
+      const id = $('uCurrent').value;
+      if(id==='admin') throw new Error('No puedes eliminar admin.');
+      if(!confirm('¿Eliminar usuario?')) return;
+      await idbDel('users', id);
+      await refreshUsersUI();
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  // -------------------- Backup / Restore --------------------
+  async function backup(){
+    const payload = {
+      version:1,
+      exportedAt: nowISO(),
+      settings: await idbGet('settings','singleton'),
+      clients: await idbAll('clients'),
+      products: await idbAll('products'),
+      quotes: await idbAll('quotes'),
+      users: await idbAll('users')
+    };
+    const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `respaldo_cotizaciones_cf_${todayISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function restoreFromFile(file){
+    try{
+      assertRole('admin');
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(!data || !data.version) throw new Error('Respaldo inválido.');
+      if(!confirm('Esto reemplazará los datos actuales por los del respaldo. ¿Continuar?')) return;
+
+      // Clear stores
+      for(const store of ['settings','clients','products','quotes','users']){
+        const items = await idbAll(store);
+        for(const it of items) await idbDel(store, it.id);
+      }
+      if(data.settings) await idbPut('settings', data.settings);
+      for(const c of (data.clients||[])) await idbPut('clients', c);
+      for(const p of (data.products||[])) await idbPut('products', p);
+      for(const q of (data.quotes||[])) await idbPut('quotes', q);
+      for(const u of (data.users||[])) await idbPut('users', u);
+
+      SETTINGS = await idbGet('settings','singleton') || defaultSettings();
+      loadConfigUI();
+      await refreshUsersUI();
+      await refreshLists();
+      await refreshDatalists();
+      alert('Respaldo importado.');
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  // -------------------- Excel import (Clientes/Productos) --------------------
+  function excelToJson(file){
+    return new Promise((resolve,reject)=>{
+      if(!window.XLSX) return reject(new Error('No se cargó la librería XLSX. Revisa tu conexión.'));
+      const reader = new FileReader();
+      reader.onload = (e)=>{
+        try{
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, {type:'array'});
+          resolve(wb);
+        }catch(err){ reject(err); }
+      };
+      reader.onerror = ()=>reject(reader.error);
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  async function importFromExcel(file){
+    try{
+      assertRole('admin');
+      const wb = await excelToJson(file);
+
+      // Expected sheets: Clientes, Productos (como tu archivo)
+      const shClients = wb.Sheets['Clientes'];
+      const shProducts = wb.Sheets['Productos'];
+      if(!shClients && !shProducts) throw new Error('No encontré hojas "Clientes" o "Productos".');
+
+      let cCount=0, pCount=0;
+      if(shClients){
+        const rows = XLSX.utils.sheet_to_json(shClients, {defval:''});
+        // Columns: Numero, Nombre, Direccion, Rfc
+        for(const r of rows){
+          const id = String(r.Numero||r.numero||'').trim();
+          if(!id || id.toLowerCase()==='numero') continue;
+          await idbPut('clients', {
+            id,
+            name: String(r.Nombre||r.nombre||'').trim(),
+            addr: String(r.Direccion||r.direccion||'').trim(),
+            rfc: String(r.Rfc||r.RFC||r.rfc||'').trim(),
+            createdAt: nowISO(),
+            updatedAt: nowISO()
+          });
+          cCount++;
+        }
+      }
+
+      if(shProducts){
+        const rows = XLSX.utils.sheet_to_json(shProducts, {defval:''});
+        // Columns: Codigo, Descripcion, Precio de venta
+        for(const r of rows){
+          const id = String(r.Codigo||r.codigo||'').trim();
+          if(!id || id.toLowerCase()==='codigo') continue;
+          await idbPut('products', {
+            id,
+            desc: String(r.Descripcion||r.descripcion||'').trim(),
+            price: Number(r['Precio de venta'] ?? r['Precio de Venta'] ?? r.precio ?? 0),
+            createdAt: nowISO(),
+            updatedAt: nowISO()
+          });
+          pCount++;
+        }
+      }
+
+      await refreshLists();
+      alert(`Importación lista. Clientes: ${cCount}, Productos: ${pCount}.`);
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  // -------------------- Wire-up --------------------
+  function wireTabs(){
+    document.querySelectorAll('.tab').forEach(t=>{
+      t.onclick=()=>{ setTab(t.dataset.tab); };
+    });
+  }
+
+  function wireNavButtons(){
+    $('btnNewQuote').onclick = ()=>{ setTab('cotizaciones'); newQuote(); };
+    $('btnNewClient').onclick = ()=>{ setTab('clientes'); newClient(); };
+    $('btnNewProduct').onclick = ()=>{ setTab('productos'); newProduct(); };
+
+    $('qSearch').oninput = refreshLists;
+    $('cSearch').oninput = refreshLists;
+    $('pSearch').oninput = refreshLists;
+
+    $('btnSaveConfig').onclick = saveConfig;
+    $('btnFactoryReset').onclick = factoryReset;
+
+    $('btnLogin').onclick = login;
+    $('btnLogout').onclick = logout;
+    $('btnSaveUser').onclick = saveUser;
+    $('btnDeleteUser').onclick = deleteUser;
+
+    $('btnBackup').onclick = backup;
+    $('btnRestore').onclick = ()=>$('fileRestore').click();
+    $('fileRestore').onchange = (e)=>{
+      const f = e.target.files?.[0];
+      if(f) restoreFromFile(f);
+      e.target.value='';
+    };
+
+    $('btnImportExcel').onclick = ()=>$('fileExcel').click();
+    $('fileExcel').onchange = (e)=>{
+      const f = e.target.files?.[0];
+      if(f) importFromExcel(f);
+      e.target.value='';
+    };
+  }
+
+  // -------------------- Init --------------------
+  async function init(){
+    db = await idbOpen();
+
+    SETTINGS = await idbGet('settings','singleton');
+    if(!SETTINGS){
+      SETTINGS = defaultSettings();
+      await idbPut('settings', SETTINGS);
+    }
+
+    const users = await idbAll('users');
+    if(users.length===0){
+      await idbPut('users', await defaultAdminUser());
+    }
+
+    loadConfigUI();
+    wireTabs();
+    wireNavButtons();
+
+    await refreshUsersUI();
+    await refreshLists();
+
+    $('statusPill').textContent = 'Sin sesión (usa admin/admin)';
+  }
+
+  init().catch(err=>{
+    console.error(err);
+    $('statusPill').textContent = 'Error al iniciar';
+    alert('Error al iniciar: ' + (err.message||String(err)));
+  });
+})();
+</script>
+</body>
+</html>
