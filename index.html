@@ -47,6 +47,13 @@
     .list .item small{display:block;color:var(--muted)}
     .hidden{display:none}
 
+    /* Encabezado empresa (logo + NIT) */
+    .ph-wrap{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;border:1px dashed rgba(255,255,255,.22);background:rgba(255,255,255,.04)}
+    .ph-logo{height:62px;max-width:160px;object-fit:contain}
+    .ph-title{font-weight:800;letter-spacing:.2px}
+    .ph-nit{margin-top:2px}
+    .ph-line{line-height:1.2}
+
     /* Print */
     @media print{
       body{background:#fff;color:#000}
@@ -56,6 +63,8 @@
       .wrap{max-width:none}
       .grid{grid-template-columns:1fr}
       th,td{border-bottom:1px solid #ddd}
+      .ph-wrap{border:0;background:#fff;padding:0}
+      .ph-logo{height:55px}
     }
   </style>
   <!-- Optional: SheetJS (importar desde Excel) -->
@@ -125,6 +134,10 @@
           <input id="cfgNext" type="number" min="1" />
           <label>IVA (%)</label>
           <input id="cfgIva" type="number" min="0" max="100" step="0.01" />
+          <label>NIT</label>
+          <input id="cfgNit" placeholder="Ej: 900.XXX.XXX-X" />
+          <label>Logo (nombre del archivo)</label>
+          <input id="cfgLogo" placeholder="logo-cf.png" />
           <label>Datos de la empresa (para impresión)</label>
           <textarea id="cfgCompany" placeholder="CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"></textarea>
           <div class="btnbar" style="margin-top:12px">
@@ -313,6 +326,15 @@
   const todayISO = ()=> new Date().toISOString().slice(0,10);
   const nowISO = ()=> new Date().toISOString();
 
+  function escapeHtml(str){
+    return String(str??'')
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#39;');
+  }
+
   // Simple SHA-256 for local passwords
   async function sha256(text){
     const enc = new TextEncoder().encode(text);
@@ -388,6 +410,8 @@
     pad:4,
     nextSeq:1,
     ivaPct:0,
+    nit:'',
+    logo:'logo-cf.png',
     company:"CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
   });
 
@@ -402,6 +426,26 @@
   function makeQuoteNumber(seq){
     const s = String(seq).padStart(Number(SETTINGS.pad||4), '0');
     return `${SETTINGS.prefix}${s}-${year()}`;
+  }
+
+  function renderPrintHeader(){
+    const el = $('printHeader');
+    if(!el) return;
+    const logo = (SETTINGS.logo||'').trim();
+    const nit = (SETTINGS.nit||'').trim();
+    const lines = String(SETTINGS.company||'').split('\n').map(s=>s.trim()).filter(Boolean);
+    const title = lines.shift() || 'CLÍNICA DE FRACTURAS S.A.S';
+    const restHtml = lines.map(l=>`<div class="ph-line">${escapeHtml(l)}</div>`).join('');
+
+    el.innerHTML = `
+      <div class="ph-wrap">
+        ${logo ? `<img class="ph-logo" src="${escapeHtml(logo)}" alt="Logo">` : ''}
+        <div class="ph-text">
+          <div class="ph-title">${escapeHtml(title)}</div>
+          ${nit ? `<div class="ph-nit"><strong>NIT:</strong> ${escapeHtml(nit)}</div>` : ''}
+          ${restHtml}
+        </div>
+      </div>`;
   }
 
   function assertRole(required){
@@ -629,7 +673,7 @@
     $('kpiSubtotal').textContent = fmtMoney(t.subtotal);
     $('kpiIva').textContent = fmtMoney(t.iva);
     $('kpiTotal').textContent = fmtMoney(t.total);
-    $('printHeader').textContent = SETTINGS.company;
+    renderPrintHeader();
   }
 
   function renderQuote(q){
@@ -723,7 +767,7 @@
 
     $('btnPrint').onclick = ()=>{
       // Show printable company header within editor
-      $('printHeader').textContent = SETTINGS.company;
+      renderPrintHeader();
       window.print();
     };
   }
@@ -849,6 +893,8 @@
     $('cfgPad').value = SETTINGS.pad || 4;
     $('cfgNext').value = SETTINGS.nextSeq || 1;
     $('cfgIva').value = SETTINGS.ivaPct || 0;
+    $('cfgNit').value = SETTINGS.nit || '';
+    $('cfgLogo').value = SETTINGS.logo || 'logo-cf.png';
     $('cfgCompany').value = SETTINGS.company || '';
   }
 
@@ -859,8 +905,11 @@
       SETTINGS.pad = Number($('cfgPad').value||4);
       SETTINGS.nextSeq = Number($('cfgNext').value||1);
       SETTINGS.ivaPct = Number($('cfgIva').value||0);
+      SETTINGS.nit = $('cfgNit').value.trim();
+      SETTINGS.logo = $('cfgLogo').value.trim() || 'logo-cf.png';
       SETTINGS.company = $('cfgCompany').value || '';
       await idbPut('settings', SETTINGS);
+      renderPrintHeader();
       alert('Configuración guardada.');
     }catch(err){ alert(err.message||String(err)); }
   }
@@ -1120,6 +1169,7 @@
     }
 
     loadConfigUI();
+    renderPrintHeader();
     wireTabs();
     wireNavButtons();
 
