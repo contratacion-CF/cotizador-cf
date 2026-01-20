@@ -1238,14 +1238,94 @@ AV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
   }
 
   // -------------------- Init --------------------
-  async function init(){
-    db = await idbOpen();
 
+// --- Arranque robusto: evita quedar colgado en "Inicializando..." ---
+function withTimeout(promise, ms, label='operación'){
+  let t;
+  const timeout = new Promise((_, reject)=>{
+    t = setTimeout(()=> reject(new Error(`Timeout (${ms}ms) en ${label}`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(()=> clearTimeout(t));
+}
+
+async function hardResetLocalData(reason){
+  try{ sessionStorage.setItem('cf_last_reset_reason', String(reason||'')); }catch(_){}
+  // Evita bucle infinito de recarga
+  const already = sessionStorage.getItem('cf_reset_attempted');
+  if(already){
+    throw new Error('Reinicio ya intentado y falló');
+  }
+  sessionStorage.setItem('cf_reset_attempted','1');
+
+  // Intenta borrar IndexedDB
+  await new Promise((resolve)=>{
+    const del = indexedDB.deleteDatabase(DB_NAME);
+    del.onsuccess = ()=> resolve();
+    del.onerror = ()=> resolve();
+    del.onblocked = ()=> resolve();
+    // Si el navegador no responde, no nos quedamos esperando
+    setTimeout(resolve, 1500);
+  });
+
+  // Limpia storage simple (no afecta otros sitios)
+  try{ localStorage.clear(); }catch(_){}
+  try{ sessionStorage.removeItem('cf_reset_attempted'); }catch(_){}
+}
+
+async function openDbSafe(){
+  // Abre la DB con timeout para evitar cuelgues
+  return await withTimeout(idbOpen(), 4000, 'IndexedDB');
+}
+
+
+  async function init(){
+  const status = $('statusPill');
+  try{
+    status.textContent = 'Inicializando...';
+    status.style.opacity = '0.9';
+
+    // 1) Abrir DB (con timeout). Si falla, reiniciar datos locales una vez y reintentar.
+    try{
+      db = await openDbSafe();
+    }catch(e1){
+      console.warn('Fallo al abrir DB, intentando reinicio local:', e1);
+      await hardResetLocalData(e1 && e1.message ? e1.message : e1);
+      // Reintento único
+      db = await openDbSafe();
+    }
+
+    // 2) Cargar/crear settings
     SETTINGS = await idbGet('settings','singleton');
     if(!SETTINGS){
       SETTINGS = defaultSettings();
       await idbPut('settings', SETTINGS);
     }
+
+    // 3) Asegurar admin siempre
+    const users = await idbAll('users');
+    const hasAdmin = Array.isArray(users) && users.some(u=>u && u.id==='admin');
+    if(!hasAdmin){
+      await idbPut('users', await defaultAdminUser());
+    }
+
+    // 4) UI
+    loadConfigUI();
+    renderPrintHeader();
+    wireTabs();
+    wireNavButtons();
+
+    await refreshUsersUI();
+    await refreshLists();
+
+    status.textContent = 'Sin sesión (usa admin/admin). Selecciona tu usuario.';
+    status.style.opacity = '1';
+  }catch(err){
+    console.error(err);
+    status.textContent = 'Error al iniciar';
+    status.style.opacity = '1';
+    alert('Error al iniciar. Se intentó reparar automáticamente.\n\nDetalles: ' + (err && err.message ? err.message : err));
+  }
+}
 
     const users = await idbAll('users');
 
