@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cotizaciones CF (sin servidor)</title>
   <style>
-    :root{--bg:#0b1220;--card:#111b2e;--muted:#9db0d0;--text:#eef3ff;--accent:#4ea1ff;--danger:#ff5c6c;--ok:#43d39e;}
+    :root{--bg:#0b1220;--card:#111b2e;--muted:#9db0d0;--text:#eef3ff;--accent:#4ea1ff;--danger:#ff5c6c;--ok:#43d39e;--bar:#4ea1ff;--margin:#2a3a5e;--font:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
     *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
     body{margin:0;background:linear-gradient(180deg,#0b1220,#070b14);color:var(--text)}
-    header{position:sticky;top:0;z-index:5;background:rgba(7,11,20,.75);backdrop-filter: blur(8px);border-bottom:1px solid rgba(255,255,255,.08)}
+    header{position:sticky;top:0;z-index:5;background:rgba(7,11,20,.75);backdrop-filter: blur(8px);border-bottom:3px solid var(--bar)}
     .wrap{max-width:1200px;margin:0 auto;padding:16px}
     .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
     h1{font-size:18px;margin:0}
-    .pill{font-size:12px;color:var(--muted);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px}
+    .pill{font-size:12px;color:var(--muted);border:1px solid var(--margin);padding:6px 10px;border-radius:999px}
     .grid{display:grid;grid-template-columns: 320px 1fr;gap:16px;align-items:start}
     @media (max-width: 980px){.grid{grid-template-columns:1fr}}
-    .card{background:rgba(17,27,46,.75);border:1px solid rgba(255,255,255,.10);border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.35)}
+    .card{background:rgba(17,27,46,.75);border:1px solid var(--margin);border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.35)}
     .card h2{font-size:14px;margin:0 0 10px 0;color:#d8e4ff}
     .card .body{padding:14px}
     label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
@@ -35,14 +35,14 @@
     td input{padding:8px 10px;border-radius:10px}
     .right{text-align:right}
     .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .kpi .box{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(6,10,18,.55)}
+    .kpi .box{padding:12px;border-radius:14px;border:1px solid var(--margin);background:rgba(6,10,18,.55)}
     .kpi .box b{display:block;font-size:16px}
     .kpi .box span{font-size:12px;color:var(--muted)}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-    .tab{padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#d9e6ff;font-size:12px;cursor:pointer}
+    .tab{padding:8px 10px;border-radius:999px;border:1px solid var(--margin);background:rgba(255,255,255,.06);color:#d9e6ff;font-size:12px;cursor:pointer}
     .tab.active{border-color:rgba(78,161,255,.55);background:rgba(78,161,255,.16)}
-    .list{max-height:360px;overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px}
-    .list .item{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}
+    .list{max-height:360px;overflow:auto;border:1px solid var(--margin);border-radius:12px}
+    .list .item{padding:10px 12px;border-bottom:3px solid var(--bar);cursor:pointer}
     .list .item:hover{background:rgba(255,255,255,.05)}
     .list .item small{display:block;color:var(--muted)}
     .hidden{display:none}
@@ -66,9 +66,19 @@
       .ph-wrap{border:0;background:#fff;padding:0}
       .ph-logo{height:55px}
     }
-  </style>
+  
+    .print-only{display:none}
+    @media print{
+      .print-only{display:block}
+      #printFootnote{
+        position:fixed;
+        left:12mm; right:12mm; bottom:10mm;
+        font-size:10px;
+        color:#555 !important;
+      }
+    }
+</style>
   <!-- Optional: SheetJS (importar desde Excel) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js" defer></script>
 </head>
 <body>
 <header>
@@ -127,17 +137,39 @@
         <div id="pane-config" class="hidden">
           <h2>Configuración</h2>
           <label>Prefijo consecutivo</label>
-          <input id="cfgPrefix" placeholder="CC-CF" />
-          <label>Longitud (ceros a la izquierda)</label>
+          <input id="cfgPrefix" placeholder="CF" />
+          <label>Ceros fijos antes del consecutivo (ej: 4 → 0000)</label>
           <input id="cfgPad" type="number" min="2" max="10" />
           <label>Consecutivo actual (se incrementa al guardar)</label>
           <input id="cfgNext" type="number" min="1" />
           <label>IVA (%)</label>
           <input id="cfgIva" type="number" min="0" max="100" step="0.01" />
           <label>NIT</label>
-          <input id="cfgNit" placeholder="Ej: 900.XXX.XXX-X" />
+          <input id="cfgNit" placeholder="Ej: 891411743-0" />
           <label>Logo (nombre del archivo)</label>
           <input id="cfgLogo" placeholder="logo-cf.png" />
+          <label>Fuente (aplica a toda la app)</label>
+          <select id="cfgFont">
+            <option value="system">Sistema</option>
+            <option value="arial">Arial</option>
+            <option value="calibri">Calibri</option>
+            <option value="times">Times New Roman</option>
+            <option value="georgia">Georgia</option>
+          </select>
+          <label>Color de botones / acentos</label>
+          <input id="cfgAccent" type="color" />
+          <label>Color de barras (encabezado)</label>
+          <input id="cfgBar" type="color" />
+          <label>Color de márgenes / bordes</label>
+          <input id="cfgMargin" type="color" />
+          <label>Agregar año al número (ej: -2026)</label>
+          <select id="cfgIncludeYear">
+            <option value="1">Sí</option>
+            <option value="0">No</option>
+          </select>
+          <label>Mensaje en pie de página (impresión)</label>
+          <input id="cfgFooterNote" placeholder="formato de cotización de servicios no contratados" />
+          
           <label>Datos de la empresa (para impresión)</label>
           <textarea id="cfgCompany" placeholder="CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"></textarea>
           <div class="btnbar" style="margin-top:12px">
@@ -213,7 +245,7 @@
             </div>
             <div style="flex:1">
               <label>Número de cotización</label>
-              <input id="qNumber" placeholder="CF0001-2026" />
+              <input id="qNumber" placeholder="CC-CF00001-2026" />
             </div>
           </div>
 
@@ -241,7 +273,7 @@
           </div>
 
           <label>Ítems</label>
-          <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px">
+          <div style="overflow:auto;border:1px solid var(--margin);border-radius:12px">
             <table id="itemsTable">
               <thead>
                 <tr>
@@ -267,6 +299,8 @@
             <div class="muted" id="printHeader"></div>
           </div>
         </div>
+
+          <div id="printFootnote" class="print-only muted" style="margin-top:10px;text-align:center"></div>
 
         <!-- Editor Cliente -->
         <div id="editor-client" class="hidden">
@@ -406,13 +440,20 @@
 
   const defaultSettings = ()=>({
     id:'singleton',
-    prefix:'CF',
-    pad:4,
+    prefix:'CC-CF',
+    pad:4, // 4 ceros fijos antes del consecutivo
     nextSeq:1,
     ivaPct:0,
-    nit:'',
+    nit:'891411743-0',
     logo:'logo-cf.png',
-    company:"CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
+    font:'system',
+    accent:'#4ea1ff',
+    bar:'#4ea1ff',
+    margin:'#2a3a5e',
+    includeYear:true,
+    footerNote:'formato de cotización de servicios no contratados',
+    company:"CLINICA DE FRACTURAS S.A.S
+AV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
   });
 
   const defaultAdminUser = async ()=>({
@@ -424,8 +465,9 @@
 
   function year(){ return new Date().getFullYear(); }
   function makeQuoteNumber(seq){
-    const s = String(seq).padStart(Number(SETTINGS.pad||4), '0');
-    return `${SETTINGS.prefix}${s}-${year()}`;
+    const zeros = '0'.repeat(Number(SETTINGS.pad||4));
+    const base = `${SETTINGS.prefix}${zeros}${String(seq)}`;
+    return (SETTINGS.includeYear===false) ? base : `${base}-${year()}`;
   }
 
   function renderPrintHeader(){
@@ -446,7 +488,11 @@
           ${restHtml}
         </div>
       </div>`;
+  
+    const foot = $('printFootnote');
+    if(foot) foot.textContent = SETTINGS.footerNote || 'formato de cotización de servicios no contratados';
   }
+
 
   function assertRole(required){
     if(!SESSION.user){ throw new Error('Debes iniciar sesión.'); }
@@ -889,27 +935,65 @@
 
   // -------------------- Config --------------------
   function loadConfigUI(){
-    $('cfgPrefix').value = SETTINGS.prefix || 'CF';
+    $('cfgPrefix').value = SETTINGS.prefix || 'CC-CF';
     $('cfgPad').value = SETTINGS.pad || 4;
     $('cfgNext').value = SETTINGS.nextSeq || 1;
     $('cfgIva').value = SETTINGS.ivaPct || 0;
     $('cfgNit').value = SETTINGS.nit || '';
     $('cfgLogo').value = SETTINGS.logo || 'logo-cf.png';
+
+    // Apariencia
+    $('cfgFont').value = SETTINGS.font || 'system';
+    $('cfgAccent').value = SETTINGS.accent || '#4ea1ff';
+    $('cfgBar').value = SETTINGS.bar || (SETTINGS.accent || '#4ea1ff');
+    $('cfgMargin').value = SETTINGS.margin || '#2a3a5e';
+
+    // Número / impresión
+    $('cfgIncludeYear').value = (SETTINGS.includeYear===false) ? '0' : '1';
+    $('cfgFooterNote').value = SETTINGS.footerNote || 'formato de cotización de servicios no contratados';
+
     $('cfgCompany').value = SETTINGS.company || '';
+
+    applyTheme();
+    const foot = $('printFootnote');
+    if(foot) foot.textContent = SETTINGS.footerNote || 'formato de cotización de servicios no contratados';
+  }
+
+  function applyTheme(){
+    const root = document.documentElement;
+    const fontMap = {
+      system: "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
+      arial: "Arial, Helvetica, sans-serif",
+      calibri: "Calibri, Arial, sans-serif",
+      times: "\"Times New Roman\", Times, serif",
+      georgia: "Georgia, serif"
+    };
+    root.style.setProperty('--font', fontMap[SETTINGS.font] || fontMap.system);
+    root.style.setProperty('--accent', SETTINGS.accent || '#4ea1ff');
+    root.style.setProperty('--bar', SETTINGS.bar || SETTINGS.accent || '#4ea1ff');
+    root.style.setProperty('--margin', SETTINGS.margin || '#2a3a5e');
   }
 
   async function saveConfig(){
     try{
       assertRole('admin');
-      SETTINGS.prefix = $('cfgPrefix').value.trim() || 'CF';
+      SETTINGS.prefix = $('cfgPrefix').value.trim() || 'CC-CF';
       SETTINGS.pad = Number($('cfgPad').value||4);
       SETTINGS.nextSeq = Number($('cfgNext').value||1);
       SETTINGS.ivaPct = Number($('cfgIva').value||0);
       SETTINGS.nit = $('cfgNit').value.trim();
       SETTINGS.logo = $('cfgLogo').value.trim() || 'logo-cf.png';
+      SETTINGS.font = $('cfgFont').value || 'system';
+      SETTINGS.accent = $('cfgAccent').value || '#4ea1ff';
+      SETTINGS.bar = $('cfgBar').value || SETTINGS.accent || '#4ea1ff';
+      SETTINGS.margin = $('cfgMargin').value || '#2a3a5e';
+      SETTINGS.includeYear = $('cfgIncludeYear').value === '1';
+      SETTINGS.footerNote = $('cfgFooterNote').value.trim() || 'formato de cotización de servicios no contratados';
       SETTINGS.company = $('cfgCompany').value || '';
       await idbPut('settings', SETTINGS);
+      applyTheme();
       renderPrintHeader();
+      { const foot=$('printFootnote'); if(foot) foot.textContent = SETTINGS.footerNote; }
       alert('Configuración guardada.');
     }catch(err){ alert(err.message||String(err)); }
   }
@@ -1164,11 +1248,14 @@
     }
 
     const users = await idbAll('users');
-    if(users.length===0){
+
+    // Asegurar que siempre exista el admin (evita quedar bloqueado)
+    const hasAdmin = users.some(u=>u && u.id==='admin');
+    if(!hasAdmin){
       await idbPut('users', await defaultAdminUser());
     }
 
-    loadConfigUI();
+loadConfigUI();
     renderPrintHeader();
     wireTabs();
     wireNavButtons();
@@ -1176,7 +1263,7 @@
     await refreshUsersUI();
     await refreshLists();
 
-    $('statusPill').textContent = 'Sin sesión (usa admin/admin)';
+    $('statusPill').textContent = 'Sin sesión (usa admin/admin). Selecciona tu usuario.';
   }
 
   init().catch(err=>{
