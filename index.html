@@ -5,17 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cotizaciones CF (sin servidor)</title>
   <style>
-    :root{--bg:#0b1220;--card:#111b2e;--muted:#9db0d0;--text:#eef3ff;--accent:#4ea1ff;--danger:#ff5c6c;--ok:#43d39e;--bar:#4ea1ff;--margin:#2a3a5e;--font:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
-    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
-    body{margin:0;background:linear-gradient(180deg,#0b1220,#070b14);color:var(--text)}
-    header{position:sticky;top:0;z-index:5;background:rgba(7,11,20,.75);backdrop-filter: blur(8px);border-bottom:3px solid var(--bar)}
+    :root{--bg:#0b1220;--card:#111b2e;--muted:#9db0d0;--text:#eef3ff;--accent:#4ea1ff;--danger:#ff5c6c;--ok:#43d39e;--bar:#4ea1ff;--border:rgba(255,255,255,.12);--font:system-ui;}
+    *{box-sizing:border-box;font-family:var(--font,system-ui),-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:linear-gradient(180deg,#0b1220,#070b14);color:var(--text)}
+    header{position:sticky;top:0;z-index:5;background:rgba(7,11,20,.75);backdrop-filter: blur(8px);border-bottom:2px solid var(--bar)}
     .wrap{max-width:1200px;margin:0 auto;padding:16px}
     .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
     h1{font-size:18px;margin:0}
-    .pill{font-size:12px;color:var(--muted);border:1px solid var(--margin);padding:6px 10px;border-radius:999px}
+    .pill{font-size:12px;color:var(--muted);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px}
     .grid{display:grid;grid-template-columns: 320px 1fr;gap:16px;align-items:start}
     @media (max-width: 980px){.grid{grid-template-columns:1fr}}
-    .card{background:rgba(17,27,46,.75);border:1px solid var(--margin);border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.35)}
+    .card{background:rgba(17,27,46,.75);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.35)}
     .card h2{font-size:14px;margin:0 0 10px 0;color:#d8e4ff}
     .card .body{padding:14px}
     label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
@@ -35,14 +34,14 @@
     td input{padding:8px 10px;border-radius:10px}
     .right{text-align:right}
     .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .kpi .box{padding:12px;border-radius:14px;border:1px solid var(--margin);background:rgba(6,10,18,.55)}
+    .kpi .box{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(6,10,18,.55)}
     .kpi .box b{display:block;font-size:16px}
     .kpi .box span{font-size:12px;color:var(--muted)}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-    .tab{padding:8px 10px;border-radius:999px;border:1px solid var(--margin);background:rgba(255,255,255,.06);color:#d9e6ff;font-size:12px;cursor:pointer}
+    .tab{padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#d9e6ff;font-size:12px;cursor:pointer}
     .tab.active{border-color:rgba(78,161,255,.55);background:rgba(78,161,255,.16)}
-    .list{max-height:360px;overflow:auto;border:1px solid var(--margin);border-radius:12px}
-    .list .item{padding:10px 12px;border-bottom:3px solid var(--bar);cursor:pointer}
+    .list{max-height:360px;overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px}
+    .list .item{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}
     .list .item:hover{background:rgba(255,255,255,.05)}
     .list .item small{display:block;color:var(--muted)}
     .hidden{display:none}
@@ -67,18 +66,23 @@
       .ph-logo{height:55px}
     }
   
-    .print-only{display:none}
+    #printFooter{margin-top:10px;font-size:12px;text-align:center;opacity:.85}
     @media print{
-      .print-only{display:block}
-      #printFootnote{
-        position:fixed;
-        left:12mm; right:12mm; bottom:10mm;
-        font-size:10px;
-        color:#555 !important;
-      }
+      #printFooter{margin-top:14px;font-size:11px;text-align:center;color:#333;opacity:1}
     }
-</style>
+
+  </style>
   <!-- Optional: SheetJS (importar desde Excel) -->
+  <script>
+  // XLSX: intenta local primero (xlsx.full.min.js), si no existe usa CDN
+  (function(){
+    const s=document.createElement("script");
+    s.defer=true;
+    s.src="xlsx.full.min.js";
+    s.onerror=()=>{ const c=document.createElement("script"); c.defer=true; c.src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"; document.head.appendChild(c); };
+    document.head.appendChild(s);
+  })();
+</script>
 </head>
 <body>
 <header>
@@ -138,40 +142,48 @@
           <h2>Configuración</h2>
           <label>Prefijo consecutivo</label>
           <input id="cfgPrefix" placeholder="CF" />
-          <label>Ceros fijos antes del consecutivo (ej: 4 → 0000)</label>
+          <label>Longitud (ceros a la izquierda)</label>
           <input id="cfgPad" type="number" min="2" max="10" />
           <label>Consecutivo actual (se incrementa al guardar)</label>
           <input id="cfgNext" type="number" min="1" />
           <label>IVA (%)</label>
           <input id="cfgIva" type="number" min="0" max="100" step="0.01" />
           <label>NIT</label>
-          <input id="cfgNit" placeholder="Ej: 891411743-0" />
+          <input id="cfgNit" placeholder="Ej: 900.XXX.XXX-X" />
           <label>Logo (nombre del archivo)</label>
           <input id="cfgLogo" placeholder="logo-cf.png" />
-          <label>Fuente (aplica a toda la app)</label>
+          <label>Datos de la empresa (para impresión)</label>
+          <textarea id="cfgCompany" placeholder="CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"></textarea>
+
+          <label>Fuente</label>
           <select id="cfgFont">
-            <option value="system">Sistema</option>
-            <option value="arial">Arial</option>
-            <option value="calibri">Calibri</option>
-            <option value="times">Times New Roman</option>
-            <option value="georgia">Georgia</option>
+            <option value="system-ui">Sistema (recomendada)</option>
+            <option value="Segoe UI">Segoe UI</option>
+            <option value="Arial">Arial</option>
+            <option value="Calibri">Calibri</option>
+            <option value="Tahoma">Tahoma</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Georgia">Georgia</option>
           </select>
-          <label>Color de botones / acentos</label>
-          <input id="cfgAccent" type="color" />
-          <label>Color de barras (encabezado)</label>
-          <input id="cfgBar" type="color" />
+
+          <label>Color de barras (encabezados)</label>
+          <input id="cfgBarColor" type="color" />
+
           <label>Color de márgenes / bordes</label>
-          <input id="cfgMargin" type="color" />
-          <label>Agregar año al número (ej: -2026)</label>
-          <select id="cfgIncludeYear">
+          <input id="cfgBorderColor" type="color" />
+
+          <label>Mostrar año al final del consecutivo</label>
+          <select id="cfgShowYear">
             <option value="1">Sí</option>
             <option value="0">No</option>
           </select>
-          <label>Mensaje en pie de página (impresión)</label>
-          <input id="cfgFooterNote" placeholder="formato de cotización de servicios no contratados" />
-          
-          <label>Datos de la empresa (para impresión)</label>
-          <textarea id="cfgCompany" placeholder="CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"></textarea>
+
+          <label>Año (opcional; vacío = año actual)</label>
+          <input id="cfgYear" type="number" min="2000" max="2100" placeholder="Ej: 2026" />
+
+          <label>Mensaje pie de página (impresión)</label>
+          <input id="cfgFooter" placeholder="formato de cotización de servicios no contratados" />
+
           <div class="btnbar" style="margin-top:12px">
             <button id="btnSaveConfig" class="ok">Guardar configuración</button>
             <button id="btnFactoryReset" class="danger">Borrar TODO (reinicio)</button>
@@ -245,7 +257,7 @@
             </div>
             <div style="flex:1">
               <label>Número de cotización</label>
-              <input id="qNumber" placeholder="CC-CF00001-2026" />
+              <input id="qNumber" placeholder="CF0001-2026" />
             </div>
           </div>
 
@@ -273,7 +285,7 @@
           </div>
 
           <label>Ítems</label>
-          <div style="overflow:auto;border:1px solid var(--margin);border-radius:12px">
+          <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px">
             <table id="itemsTable">
               <thead>
                 <tr>
@@ -297,10 +309,9 @@
 
           <div style="margin-top:10px">
             <div class="muted" id="printHeader"></div>
+            <div class="muted" id="printFooter"></div>
           </div>
         </div>
-
-          <div id="printFootnote" class="print-only muted" style="margin-top:10px;text-align:center"></div>
 
         <!-- Editor Cliente -->
         <div id="editor-client" class="hidden">
@@ -437,36 +448,64 @@
   let SETTINGS = null;
   let SESSION = { user:null };
   let CURRENT = { type:null, id:null }; // quote|client|product
-
   const defaultSettings = ()=>({
     id:'singleton',
-    prefix:'CC-CF',
-    pad:4, // 4 ceros fijos antes del consecutivo
+    prefix:'CC-CF',          // Prefijo requerido
+    pad:5,                  // CC-CF + 4 ceros + consecutivo (ej: CC-CF00001)
     nextSeq:1,
     ivaPct:0,
     nit:'891411743-0',
     logo:'logo-cf.png',
-    font:'system',
-    accent:'#4ea1ff',
-    bar:'#4ea1ff',
-    margin:'#2a3a5e',
-    includeYear:true,
-    footerNote:'formato de cotización de servicios no contratados',
-    company:"CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
+    // Branding configurable (sin tocar código)
+    fontFamily:'system-ui', // opciones en Config
+    barColor:'#4ea1ff',
+    borderColor:'rgba(255,255,255,.12)',
+    showYearSuffix:true,
+    yearOverride:'',        // vacío = año actual
+    footerText:'formato de cotización de servicios no contratados',
+    company:"CLINICA DE FRACTURAS S.A.S
+AV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
   });
 
-  const defaultAdminUser = async ()=>({
+const defaultAdminUser = async ()=>({
     id:'admin',
     name:'Administrador',
     role:'admin',
     passHash: await sha256('admin')
   });
-
   function year(){ return new Date().getFullYear(); }
   function makeQuoteNumber(seq){
-    const zeros = '0'.repeat(Number(SETTINGS.pad||4));
-    const base = `${SETTINGS.prefix}${zeros}${String(seq)}`;
-    return (SETTINGS.includeYear===false) ? base : `${base}-${year()}`;
+    const s = String(seq).padStart(Number(SETTINGS.pad||5), '0');
+    const useYear = !!SETTINGS.showYearSuffix;
+    const y = (SETTINGS.yearOverride||'').toString().trim();
+    const yy = y ? y : String(year());
+    return `${SETTINGS.prefix}${s}${useYear ? `-${yy}` : ''}`;
+  }
+
+${s}-${year()}`;
+  }
+
+
+  function applyBranding(){
+    try{
+      const root = document.documentElement;
+      const font = (SETTINGS.fontFamily||'system-ui').trim();
+      const bar = (SETTINGS.barColor||'#4ea1ff').trim();
+      const border = (SETTINGS.borderColor||'rgba(255,255,255,.12)').trim();
+
+      root.style.setProperty('--font', font);
+      root.style.setProperty('--bar', bar);
+      root.style.setProperty('--border', border);
+      // Reusar --accent para mantener coherencia visual en botones/controles
+      root.style.setProperty('--accent', bar);
+    }catch(_){}
+  }
+
+  function renderPrintFooter(){
+    const el = $('printFooter');
+    if(!el) return;
+    const txt = (SETTINGS.footerText||'').trim();
+    el.textContent = txt ? txt : '';
   }
 
   function renderPrintHeader(){
@@ -488,10 +527,8 @@
         </div>
       </div>`;
   
-    const foot = $('printFootnote');
-    if(foot) foot.textContent = SETTINGS.footerNote || 'formato de cotización de servicios no contratados';
-  }
-
+    renderPrintFooter();
+}
 
   function assertRole(required){
     if(!SESSION.user){ throw new Error('Debes iniciar sesión.'); }
@@ -788,6 +825,8 @@
         if(isNew){
           SETTINGS.nextSeq = Number(SETTINGS.nextSeq||1) + 1;
           await idbPut('settings', SETTINGS);
+      applyBranding();
+      renderPrintFooter();
         }
 
         await refreshLists();
@@ -934,65 +973,38 @@
 
   // -------------------- Config --------------------
   function loadConfigUI(){
-    $('cfgPrefix').value = SETTINGS.prefix || 'CC-CF';
+    $('cfgPrefix').value = SETTINGS.prefix || 'CF';
     $('cfgPad').value = SETTINGS.pad || 4;
     $('cfgNext').value = SETTINGS.nextSeq || 1;
     $('cfgIva').value = SETTINGS.ivaPct || 0;
     $('cfgNit').value = SETTINGS.nit || '';
     $('cfgLogo').value = SETTINGS.logo || 'logo-cf.png';
-
-    // Apariencia
-    $('cfgFont').value = SETTINGS.font || 'system';
-    $('cfgAccent').value = SETTINGS.accent || '#4ea1ff';
-    $('cfgBar').value = SETTINGS.bar || (SETTINGS.accent || '#4ea1ff');
-    $('cfgMargin').value = SETTINGS.margin || '#2a3a5e';
-
-    // Número / impresión
-    $('cfgIncludeYear').value = (SETTINGS.includeYear===false) ? '0' : '1';
-    $('cfgFooterNote').value = SETTINGS.footerNote || 'formato de cotización de servicios no contratados';
-
     $('cfgCompany').value = SETTINGS.company || '';
-
-    applyTheme();
-    const foot = $('printFootnote');
-    if(foot) foot.textContent = SETTINGS.footerNote || 'formato de cotización de servicios no contratados';
-  }
-
-  function applyTheme(){
-    const root = document.documentElement;
-    const fontMap = {
-      system: "system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif",
-      arial: "Arial, Helvetica, sans-serif",
-      calibri: "Calibri, Arial, sans-serif",
-      times: "\"Times New Roman\", Times, serif",
-      georgia: "Georgia, serif"
-    };
-    root.style.setProperty('--font', fontMap[SETTINGS.font] || fontMap.system);
-    root.style.setProperty('--accent', SETTINGS.accent || '#4ea1ff');
-    root.style.setProperty('--bar', SETTINGS.bar || SETTINGS.accent || '#4ea1ff');
-    root.style.setProperty('--margin', SETTINGS.margin || '#2a3a5e');
+    $('cfgFont').value = SETTINGS.fontFamily || 'system-ui';
+    $('cfgBarColor').value = SETTINGS.barColor || '#4ea1ff';
+    // borderColor puede venir en rgba/hex: si es rgba no se puede setear en input color
+    $('cfgBorderColor').value = /^#/.test(SETTINGS.borderColor||'') ? SETTINGS.borderColor : '#2b3b5f';
+    $('cfgShowYear').value = (SETTINGS.showYearSuffix===false ? '0' : '1');
+    $('cfgYear').value = SETTINGS.yearOverride || '';
+    $('cfgFooter').value = SETTINGS.footerText || 'formato de cotización de servicios no contratados';
+    applyBranding();
+    renderPrintFooter();
   }
 
   async function saveConfig(){
     try{
       assertRole('admin');
-      SETTINGS.prefix = $('cfgPrefix').value.trim() || 'CC-CF';
+      SETTINGS.prefix = $('cfgPrefix').value.trim() || 'CF';
       SETTINGS.pad = Number($('cfgPad').value||4);
       SETTINGS.nextSeq = Number($('cfgNext').value||1);
       SETTINGS.ivaPct = Number($('cfgIva').value||0);
       SETTINGS.nit = $('cfgNit').value.trim();
       SETTINGS.logo = $('cfgLogo').value.trim() || 'logo-cf.png';
-      SETTINGS.font = $('cfgFont').value || 'system';
-      SETTINGS.accent = $('cfgAccent').value || '#4ea1ff';
-      SETTINGS.bar = $('cfgBar').value || SETTINGS.accent || '#4ea1ff';
-      SETTINGS.margin = $('cfgMargin').value || '#2a3a5e';
-      SETTINGS.includeYear = $('cfgIncludeYear').value === '1';
-      SETTINGS.footerNote = $('cfgFooterNote').value.trim() || 'formato de cotización de servicios no contratados';
       SETTINGS.company = $('cfgCompany').value || '';
       await idbPut('settings', SETTINGS);
-      applyTheme();
+      applyBranding();
+      renderPrintFooter();
       renderPrintHeader();
-      { const foot=$('printFootnote'); if(foot) foot.textContent = SETTINGS.footerNote; }
       alert('Configuración guardada.');
     }catch(err){ alert(err.message||String(err)); }
   }
@@ -1012,12 +1024,292 @@
 
   // -------------------- Users --------------------
   async function refreshUsersUI(){
+    const users = await idbAll('users');
+    const sel = $('uCurrent');
+    sel.innerHTML='';
+    users.forEach(u=>{
+      const opt=document.createElement('option');
+      opt.value=u.id;
+      opt.textContent=`${u.name} (${u.role})`;
+      sel.appendChild(opt);
+    });
+  }
 
-  init().catch(err=>{
-    console.error(err);
-    $('statusPill').textContent = 'Error al iniciar';
-    alert('Error al iniciar: ' + (err.message||String(err)));
-  });
+  async function login(){
+    const userId = $('uCurrent').value;
+    const pass = $('uPass').value;
+    const user = await idbGet('users', userId);
+    if(!user) return alert('Usuario no existe.');
+    const hash = await sha256(pass);
+    if(hash !== user.passHash) return alert('Contraseña incorrecta.');
+    SESSION.user = { id:user.id, name:user.name, role:user.role };
+    $('statusPill').textContent = `Sesión: ${user.name} (${user.role})`;
+    $('statusPill').style.color = 'var(--accent)';
+    $('uPass').value='';
+  }
+
+  async function logout(){
+    SESSION.user=null;
+    $('statusPill').textContent='Sin sesión';
+    $('statusPill').style.color='';
+  }
+
+  async function saveUser(){
+    try{
+      assertRole('admin');
+      const sel = $('uCurrent');
+      const existing = await idbGet('users', sel.value);
+
+      const name = $('uName').value.trim();
+      if(!name) throw new Error('Nombre requerido.');
+
+      const role = $('uRole').value;
+      const newPass = $('uNewPass').value;
+
+      const id = existing?.id || name.toLowerCase().replace(/\s+/g,'_').slice(0,40);
+      const obj = {
+        id,
+        name,
+        role,
+        passHash: existing?.passHash || await sha256('1234')
+      };
+      if(newPass) obj.passHash = await sha256(newPass);
+
+      await idbPut('users', obj);
+      await refreshUsersUI();
+      sel.value = id;
+      alert('Usuario guardado.');
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  async function deleteUser(){
+    try{
+      assertRole('admin');
+      const id = $('uCurrent').value;
+      if(id==='admin') throw new Error('No puedes eliminar admin.');
+      if(!confirm('¿Eliminar usuario?')) return;
+      await idbDel('users', id);
+      await refreshUsersUI();
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  // -------------------- Backup / Restore --------------------
+  async function backup(){
+    const payload = {
+      version:1,
+      exportedAt: nowISO(),
+      settings: await idbGet('settings','singleton'),
+      clients: await idbAll('clients'),
+      products: await idbAll('products'),
+      quotes: await idbAll('quotes'),
+      users: await idbAll('users')
+    };
+    const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `respaldo_cotizaciones_cf_${todayISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function restoreFromFile(file){
+    try{
+      assertRole('admin');
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if(!data || !data.version) throw new Error('Respaldo inválido.');
+      if(!confirm('Esto reemplazará los datos actuales por los del respaldo. ¿Continuar?')) return;
+
+      // Clear stores
+      for(const store of ['settings','clients','products','quotes','users']){
+        const items = await idbAll(store);
+        for(const it of items) await idbDel(store, it.id);
+      }
+      if(data.settings) await idbPut('settings', data.settings);
+      for(const c of (data.clients||[])) await idbPut('clients', c);
+      for(const p of (data.products||[])) await idbPut('products', p);
+      for(const q of (data.quotes||[])) await idbPut('quotes', q);
+      for(const u of (data.users||[])) await idbPut('users', u);
+
+      SETTINGS = await idbGet('settings','singleton') || defaultSettings();
+      loadConfigUI();
+      await refreshUsersUI();
+      await refreshLists();
+      await refreshDatalists();
+      alert('Respaldo importado.');
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  // -------------------- Excel import (Clientes/Productos) --------------------
+  function excelToJson(file){
+    return new Promise((resolve,reject)=>{
+      if(!window.XLSX) return reject(new Error('No se cargó la librería XLSX. Revisa tu conexión.'));
+      const reader = new FileReader();
+      reader.onload = (e)=>{
+        try{
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, {type:'array'});
+          resolve(wb);
+        }catch(err){ reject(err); }
+      };
+      reader.onerror = ()=>reject(reader.error);
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  async function importFromExcel(file){
+    try{
+      assertRole('admin');
+      const wb = await excelToJson(file);
+
+      // Expected sheets: Clientes, Productos (como tu archivo)
+      const shClients = wb.Sheets['Clientes'];
+      const shProducts = wb.Sheets['Productos'];
+      if(!shClients && !shProducts) throw new Error('No encontré hojas "Clientes" o "Productos".');
+
+      let cCount=0, pCount=0;
+      if(shClients){
+        const rows = XLSX.utils.sheet_to_json(shClients, {defval:''});
+        // Columns: Numero, Nombre, Direccion, Rfc
+        for(const r of rows){
+          const id = String(r.Numero||r.numero||'').trim();
+          if(!id || id.toLowerCase()==='numero') continue;
+          await idbPut('clients', {
+            id,
+            name: String(r.Nombre||r.nombre||'').trim(),
+            addr: String(r.Direccion||r.direccion||'').trim(),
+            rfc: String(r.Rfc||r.RFC||r.rfc||'').trim(),
+            createdAt: nowISO(),
+            updatedAt: nowISO()
+          });
+          cCount++;
+        }
+      }
+
+      if(shProducts){
+        const rows = XLSX.utils.sheet_to_json(shProducts, {defval:''});
+        // Columns: Codigo, Descripcion, Precio de venta
+        for(const r of rows){
+          const id = String(r.Codigo||r.codigo||'').trim();
+          if(!id || id.toLowerCase()==='codigo') continue;
+          await idbPut('products', {
+            id,
+            desc: String(r.Descripcion||r.descripcion||'').trim(),
+            price: Number(r['Precio de venta'] ?? r['Precio de Venta'] ?? r.precio ?? 0),
+            createdAt: nowISO(),
+            updatedAt: nowISO()
+          });
+          pCount++;
+        }
+      }
+
+      await refreshLists();
+      alert(`Importación lista. Clientes: ${cCount}, Productos: ${pCount}.`);
+    }catch(err){ alert(err.message||String(err)); }
+  }
+
+  // -------------------- Wire-up --------------------
+  function wireTabs(){
+    document.querySelectorAll('.tab').forEach(t=>{
+      t.onclick=()=>{ setTab(t.dataset.tab); };
+    });
+  }
+
+  function wireNavButtons(){
+    $('btnNewQuote').onclick = ()=>{ setTab('cotizaciones'); newQuote(); };
+    $('btnNewClient').onclick = ()=>{ setTab('clientes'); newClient(); };
+    $('btnNewProduct').onclick = ()=>{ setTab('productos'); newProduct(); };
+
+    $('qSearch').oninput = refreshLists;
+    $('cSearch').oninput = refreshLists;
+    $('pSearch').oninput = refreshLists;
+
+    $('btnSaveConfig').onclick = saveConfig;
+    $('btnFactoryReset').onclick = factoryReset;
+
+    $('btnLogin').onclick = login;
+    $('btnLogout').onclick = logout;
+    $('btnSaveUser').onclick = saveUser;
+    $('btnDeleteUser').onclick = deleteUser;
+
+    $('btnBackup').onclick = backup;
+    $('btnRestore').onclick = ()=>$('fileRestore').click();
+    $('fileRestore').onchange = (e)=>{
+      const f = e.target.files?.[0];
+      if(f) restoreFromFile(f);
+      e.target.value='';
+    };
+
+    $('btnImportExcel').onclick = ()=>$('fileExcel').click();
+    $('fileExcel').onchange = (e)=>{
+      const f = e.target.files?.[0];
+      if(f) importFromExcel(f);
+      e.target.value='';
+    };
+  }
+
+  // -------------------- Init --------------------
+  async function init(){
+    db = await idbOpen();
+
+    SETTINGS = await idbGet('settings','singleton');
+    if(!SETTINGS){
+      SETTINGS = defaultSettings();
+      await idbPut('settings', SETTINGS);
+      applyBranding();
+      renderPrintFooter();
+    }
+
+    const users = await idbAll('users');
+    if(users.length===0){
+      await idbPut('users', await defaultAdminUser());
+    }
+
+    loadConfigUI();
+    renderPrintHeader();
+    wireTabs();
+    wireNavButtons();
+
+    await refreshUsersUI();
+    await refreshLists();
+
+    $('statusPill').textContent = 'Sin sesión (usa admin/admin)';
+  }
+
+  
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+  async function wipeLocalAndReload(){
+    try{
+      await new Promise((resolve,reject)=>{
+        const r = indexedDB.deleteDatabase(DB_NAME);
+        r.onsuccess=()=>resolve(true);
+        r.onerror=()=>reject(r.error);
+      });
+    }catch(_){}
+    try{ localStorage.clear(); }catch(_){}
+    location.reload();
+  }
+
+  async function safeInit(){
+    const tried = sessionStorage.getItem('cf_recover_tried') === '1';
+    try{
+      // timeout duro para evitar "Inicializando..." infinito
+      await Promise.race([init(), sleep(5000).then(()=>{ throw new Error('Timeout de inicialización'); })]);
+    }catch(err){
+      console.error(err);
+      $('statusPill').textContent = 'Error al iniciar';
+      if(tried){
+        alert('Error al iniciar incluso después de recuperación automática. Revisa la consola (F12) para ver detalles.');
+        return;
+      }
+      sessionStorage.setItem('cf_recover_tried','1');
+      // Opción 2: recuperar automáticamente borrando estado local dañado
+      await wipeLocalAndReload();
+    }
+  }
+
+  safeInit();
 })();
 </script>
 </body>
