@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cotizaciones CF (sin servidor)</title>
   <style>
-    :root{--bg:#0b1220;--card:#111b2e;--muted:#9db0d0;--text:#eef3ff;--accent:#4ea1ff;--danger:#ff5c6c;--ok:#43d39e;--bar:#4ea1ff;--border:rgba(255,255,255,.12);--font:system-ui;}
+    :root{--bar:#4ea1ff;--border:#203050;--font:system-ui;--bg:#0b1220;--card:#111b2e;--muted:#9db0d0;--text:#eef3ff;--accent:#4ea1ff;--danger:#ff5c6c;--ok:#43d39e;}
     *{box-sizing:border-box;font-family:var(--font,system-ui),-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:linear-gradient(180deg,#0b1220,#070b14);color:var(--text)}
     header{position:sticky;top:0;z-index:5;background:rgba(7,11,20,.75);backdrop-filter: blur(8px);border-bottom:2px solid var(--bar)}
     .wrap{max-width:1200px;margin:0 auto;padding:16px}
@@ -34,13 +34,13 @@
     td input{padding:8px 10px;border-radius:10px}
     .right{text-align:right}
     .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .kpi .box{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(6,10,18,.55)}
+    .kpi .box{padding:12px;border-radius:14px;border:1px solid var(--border);background:rgba(6,10,18,.55)}
     .kpi .box b{display:block;font-size:16px}
     .kpi .box span{font-size:12px;color:var(--muted)}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
     .tab{padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#d9e6ff;font-size:12px;cursor:pointer}
     .tab.active{border-color:rgba(78,161,255,.55);background:rgba(78,161,255,.16)}
-    .list{max-height:360px;overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px}
+    .list{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:12px}
     .list .item{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}
     .list .item:hover{background:rgba(255,255,255,.05)}
     .list .item small{display:block;color:var(--muted)}
@@ -66,20 +66,23 @@
       .ph-logo{height:55px}
     }
   
-    #printFooter{margin-top:10px;font-size:12px;text-align:center;opacity:.85}
-    @media print{
-      #printFooter{margin-top:14px;font-size:11px;text-align:center;color:#333;opacity:1}
-    }
-
-  </style>
+  #printFooter{margin-top:10px;font-size:12px;text-align:center;opacity:.85}
+  @media print{#printFooter{margin-top:14px;font-size:11px;text-align:center;color:#333;opacity:1}}
+</style>
   <!-- Optional: SheetJS (importar desde Excel) -->
   <script>
-  // XLSX: intenta local primero (xlsx.full.min.js), si no existe usa CDN
+  // XLSX: intenta cargar primero desde el mismo repositorio (xlsx.full.min.js).
+  // Si no existe, intenta CDN. Si la red bloquea el CDN, la app sigue funcionando (solo falla la importación).
   (function(){
-    const s=document.createElement("script");
+    const s=document.createElement('script');
     s.defer=true;
-    s.src="xlsx.full.min.js";
-    s.onerror=()=>{ const c=document.createElement("script"); c.defer=true; c.src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"; document.head.appendChild(c); };
+    s.src='xlsx.full.min.js';
+    s.onerror=()=>{ 
+      const c=document.createElement('script'); 
+      c.defer=true; 
+      c.src='https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js'; 
+      document.head.appendChild(c);
+    };
     document.head.appendChild(s);
   })();
 </script>
@@ -154,35 +157,34 @@
           <input id="cfgLogo" placeholder="logo-cf.png" />
           <label>Datos de la empresa (para impresión)</label>
           <textarea id="cfgCompany" placeholder="CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"></textarea>
+<label>Fuente</label>
+<select id="cfgFont">
+  <option value="system-ui">Sistema (recomendada)</option>
+  <option value="Segoe UI">Segoe UI</option>
+  <option value="Arial">Arial</option>
+  <option value="Calibri">Calibri</option>
+  <option value="Tahoma">Tahoma</option>
+  <option value="Verdana">Verdana</option>
+  <option value="Georgia">Georgia</option>
+</select>
 
-          <label>Fuente</label>
-          <select id="cfgFont">
-            <option value="system-ui">Sistema (recomendada)</option>
-            <option value="Segoe UI">Segoe UI</option>
-            <option value="Arial">Arial</option>
-            <option value="Calibri">Calibri</option>
-            <option value="Tahoma">Tahoma</option>
-            <option value="Verdana">Verdana</option>
-            <option value="Georgia">Georgia</option>
-          </select>
+<label>Color de barras (encabezados)</label>
+<input id="cfgBarColor" type="color" />
 
-          <label>Color de barras (encabezados)</label>
-          <input id="cfgBarColor" type="color" />
+<label>Color de márgenes / bordes</label>
+<input id="cfgBorderColor" type="color" />
 
-          <label>Color de márgenes / bordes</label>
-          <input id="cfgBorderColor" type="color" />
+<label>Mostrar año al final del consecutivo</label>
+<select id="cfgShowYear">
+  <option value="1">Sí</option>
+  <option value="0">No</option>
+</select>
 
-          <label>Mostrar año al final del consecutivo</label>
-          <select id="cfgShowYear">
-            <option value="1">Sí</option>
-            <option value="0">No</option>
-          </select>
+<label>Año (opcional; vacío = año actual)</label>
+<input id="cfgYear" type="number" min="2000" max="2100" placeholder="Ej: 2026" />
 
-          <label>Año (opcional; vacío = año actual)</label>
-          <input id="cfgYear" type="number" min="2000" max="2100" placeholder="Ej: 2026" />
-
-          <label>Mensaje pie de página (impresión)</label>
-          <input id="cfgFooter" placeholder="formato de cotización de servicios no contratados" />
+<label>Mensaje pie de página (impresión)</label>
+<input id="cfgFooter" placeholder="formato de cotización de servicios no contratados" />
 
           <div class="btnbar" style="margin-top:12px">
             <button id="btnSaveConfig" class="ok">Guardar configuración</button>
@@ -285,7 +287,7 @@
           </div>
 
           <label>Ítems</label>
-          <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px">
+          <div style="overflow:auto;border:1px solid var(--border);border-radius:12px">
             <table id="itemsTable">
               <thead>
                 <tr>
@@ -448,62 +450,63 @@
   let SETTINGS = null;
   let SESSION = { user:null };
   let CURRENT = { type:null, id:null }; // quote|client|product
-  const defaultSettings = ()=>({
-    id:'singleton',
-    prefix:'CC-CF',          // Prefijo requerido
-    pad:5,                  // CC-CF + 4 ceros + consecutivo (ej: CC-CF00001)
-    nextSeq:1,
-    ivaPct:0,
-    nit:'891411743-0',
-    logo:'logo-cf.png',
-    // Branding configurable (sin tocar código)
-    fontFamily:'system-ui', // opciones en Config
-    barColor:'#4ea1ff',
-    borderColor:'rgba(255,255,255,.12)',
-    showYearSuffix:true,
-    yearOverride:'',        // vacío = año actual
-    footerText:'formato de cotización de servicios no contratados',
-    company:"CLINICA DE FRACTURAS S.A.S
-AV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
-  });
 
-const defaultAdminUser = async ()=>({
+  const defaultSettings = ()=>({
+  id:'singleton',
+  prefix:'CC-CF',
+  pad:5,                 // CC-CF + 4 ceros + consecutivo (ej: CC-CF00001)
+  nextSeq:1,
+  ivaPct:0,
+  nit:'891411743-0',
+  logo:'logo-cf.png',
+  // Branding configurable (sin tocar código)
+  fontFamily:'system-ui',
+  barColor:'#4ea1ff',
+  borderColor:'#203050',
+  showYearSuffix:true,
+  yearOverride:'',        // vacío = año actual
+  footerText:'formato de cotización de servicios no contratados',
+  company:"CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
+});
+
+  const defaultAdminUser = async ()=>({
     id:'admin',
     name:'Administrador',
     role:'admin',
     passHash: await sha256('admin')
   });
+
   function year(){ return new Date().getFullYear(); }
-  function makeQuoteNumber(seq){
-    const s = String(seq).padStart(Number(SETTINGS.pad||5), '0');
-    const useYear = !!SETTINGS.showYearSuffix;
-    const y = (SETTINGS.yearOverride||'').toString().trim();
-    const yy = y ? y : String(year());
-    return `${SETTINGS.prefix}${s}${useYear ? `-${yy}` : ''}`;
+function makeQuoteNumber(seq){
+  const s = String(seq).padStart(Number(SETTINGS.pad||5), '0');
+  const useYear = (SETTINGS.showYearSuffix !== false);
+  const y = (SETTINGS.yearOverride||'').toString().trim();
+  const yy = y ? y : String(year());
+  return `${SETTINGS.prefix}${s}${useYear ? `-${yy}` : ''}`;
+}
+
+${s}-${year()}`;
   }
 
+function applyBranding(){
+  try{
+    const root = document.documentElement;
+    const font = (SETTINGS.fontFamily||'system-ui').trim();
+    const bar = (SETTINGS.barColor||'#4ea1ff').trim();
+    const border = (SETTINGS.borderColor||'#203050').trim();
+    root.style.setProperty('--font', font);
+    root.style.setProperty('--bar', bar);
+    root.style.setProperty('--border', border);
+    // Reusar --accent para coherencia visual
+    root.style.setProperty('--accent', bar);
+  }catch(_){}
+}
 
-  function applyBranding(){
-    try{
-      const root = document.documentElement;
-      const font = (SETTINGS.fontFamily||'system-ui').trim();
-      const bar = (SETTINGS.barColor||'#4ea1ff').trim();
-      const border = (SETTINGS.borderColor||'rgba(255,255,255,.12)').trim();
-
-      root.style.setProperty('--font', font);
-      root.style.setProperty('--bar', bar);
-      root.style.setProperty('--border', border);
-      // Reusar --accent para mantener coherencia visual en botones/controles
-      root.style.setProperty('--accent', bar);
-    }catch(_){}
-  }
-
-  function renderPrintFooter(){
-    const el = $('printFooter');
-    if(!el) return;
-    const txt = (SETTINGS.footerText||'').trim();
-    el.textContent = txt ? txt : '';
-  }
+function renderPrintFooter(){
+  const el = $('printFooter');
+  if(!el) return;
+  el.textContent = (SETTINGS.footerText||'').trim();
+}
 
   function renderPrintHeader(){
     const el = $('printHeader');
@@ -523,9 +526,8 @@ const defaultAdminUser = async ()=>({
           ${restHtml}
         </div>
       </div>`;
-  
     renderPrintFooter();
-}
+  }
 
   function assertRole(required){
     if(!SESSION.user){ throw new Error('Debes iniciar sesión.'); }
@@ -979,8 +981,7 @@ const defaultAdminUser = async ()=>({
     $('cfgCompany').value = SETTINGS.company || '';
     $('cfgFont').value = SETTINGS.fontFamily || 'system-ui';
     $('cfgBarColor').value = SETTINGS.barColor || '#4ea1ff';
-    // borderColor puede venir en rgba/hex: si es rgba no se puede setear en input color
-    $('cfgBorderColor').value = /^#/.test(SETTINGS.borderColor||'') ? SETTINGS.borderColor : '#2b3b5f';
+    $('cfgBorderColor').value = SETTINGS.borderColor || '#203050';
     $('cfgShowYear').value = (SETTINGS.showYearSuffix===false ? '0' : '1');
     $('cfgYear').value = SETTINGS.yearOverride || '';
     $('cfgFooter').value = SETTINGS.footerText || 'formato de cotización de servicios no contratados';
@@ -1273,41 +1274,21 @@ const defaultAdminUser = async ()=>({
     $('statusPill').textContent = 'Sin sesión (usa admin/admin)';
   }
 
-  
-  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-  async function wipeLocalAndReload(){
-    try{
-      await new Promise((resolve,reject)=>{
-        const r = indexedDB.deleteDatabase(DB_NAME);
-        r.onsuccess=()=>resolve(true);
-        r.onerror=()=>reject(r.error);
-      });
-    }catch(_){}
-    try{ localStorage.clear(); }catch(_){}
-    location.reload();
-  }
-
-  async function safeInit(){
-    const tried = sessionStorage.getItem('cf_recover_tried') === '1';
-    try{
-      // timeout duro para evitar "Inicializando..." infinito
-      await Promise.race([init(), sleep(5000).then(()=>{ throw new Error('Timeout de inicialización'); })]);
-    }catch(err){
-      console.error(err);
-      $('statusPill').textContent = 'Error al iniciar';
-      if(tried){
-        alert('Error al iniciar incluso después de recuperación automática. Revisa la consola (F12) para ver detalles.');
-        return;
+      async function safeInit(){
+      try{
+        await init();
+      }catch(err){
+        console.error(err);
+        $('statusPill').textContent = 'Error al iniciar';
+        // Recuperación automática (opción 2): reinicia datos locales para salir del bloqueo.
+        {
+          try{ indexedDB.deleteDatabase(DB_NAME); }catch(_){}
+          try{ localStorage.clear(); }catch(_){}
+          location.reload();
       }
-      sessionStorage.setItem('cf_recover_tried','1');
-      // Opción 2: recuperar automáticamente borrando estado local dañado
-      await wipeLocalAndReload();
     }
-  }
-
-  safeInit();
-})();
+    safeInit();
+  })();
 </script>
 </body>
 </html>
