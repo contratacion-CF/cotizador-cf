@@ -1017,7 +1017,7 @@ ${s}-${year()}`;
         const r = indexedDB.deleteDatabase(DB_NAME);
         r.onsuccess=()=>resolve(true);
         r.onerror=()=>reject(r.error);
-      };
+      });
       location.reload();
     }catch(err){ alert(err.message||String(err)); }
   }
