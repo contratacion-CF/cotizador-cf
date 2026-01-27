@@ -5,16 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Cotizaciones CF (sin servidor)</title>
   <style>
-    :root{--bar:#4ea1ff;--border:#203050;--font:system-ui;--bg:#0b1220;--card:#111b2e;--muted:#9db0d0;--text:#eef3ff;--accent:#4ea1ff;--danger:#ff5c6c;--ok:#43d39e;}
-    *{box-sizing:border-box;font-family:var(--font,system-ui),-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:linear-gradient(180deg,#0b1220,#070b14);color:var(--text)}
-    header{position:sticky;top:0;z-index:5;background:rgba(7,11,20,.75);backdrop-filter: blur(8px);border-bottom:2px solid var(--bar)}
+    :root{--bg:#0b1220;--card:#111b2e;--muted:#9db0d0;--text:#eef3ff;--accent:#4ea1ff;--danger:#ff5c6c;--ok:#43d39e;}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
+    body{margin:0;background:linear-gradient(180deg,#0b1220,#070b14);color:var(--text)}
+    header{position:sticky;top:0;z-index:5;background:rgba(7,11,20,.75);backdrop-filter: blur(8px);border-bottom:1px solid rgba(255,255,255,.08)}
     .wrap{max-width:1200px;margin:0 auto;padding:16px}
     .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
     h1{font-size:18px;margin:0}
     .pill{font-size:12px;color:var(--muted);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:999px}
     .grid{display:grid;grid-template-columns: 320px 1fr;gap:16px;align-items:start}
     @media (max-width: 980px){.grid{grid-template-columns:1fr}}
-    .card{background:rgba(17,27,46,.75);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.35)}
+    .card{background:rgba(17,27,46,.75);border:1px solid rgba(255,255,255,.10);border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.35)}
     .card h2{font-size:14px;margin:0 0 10px 0;color:#d8e4ff}
     .card .body{padding:14px}
     label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
@@ -34,24 +35,17 @@
     td input{padding:8px 10px;border-radius:10px}
     .right{text-align:right}
     .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-    .kpi .box{padding:12px;border-radius:14px;border:1px solid var(--border);background:rgba(6,10,18,.55)}
+    .kpi .box{padding:12px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(6,10,18,.55)}
     .kpi .box b{display:block;font-size:16px}
     .kpi .box span{font-size:12px;color:var(--muted)}
     .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
     .tab{padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#d9e6ff;font-size:12px;cursor:pointer}
     .tab.active{border-color:rgba(78,161,255,.55);background:rgba(78,161,255,.16)}
-    .list{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:12px}
+    .list{max-height:360px;overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px}
     .list .item{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer}
     .list .item:hover{background:rgba(255,255,255,.05)}
     .list .item small{display:block;color:var(--muted)}
     .hidden{display:none}
-
-    /* Encabezado empresa (logo + NIT) */
-    .ph-wrap{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;border:1px dashed rgba(255,255,255,.22);background:rgba(255,255,255,.04)}
-    .ph-logo{height:62px;max-width:160px;object-fit:contain}
-    .ph-title{font-weight:800;letter-spacing:.2px}
-    .ph-nit{margin-top:2px}
-    .ph-line{line-height:1.2}
 
     /* Print */
     @media print{
@@ -62,30 +56,10 @@
       .wrap{max-width:none}
       .grid{grid-template-columns:1fr}
       th,td{border-bottom:1px solid #ddd}
-      .ph-wrap{border:0;background:#fff;padding:0}
-      .ph-logo{height:55px}
     }
-  
-  #printFooter{margin-top:10px;font-size:12px;text-align:center;opacity:.85}
-  @media print{#printFooter{margin-top:14px;font-size:11px;text-align:center;color:#333;opacity:1}}
-</style>
+  </style>
   <!-- Optional: SheetJS (importar desde Excel) -->
-  <script>
-  // XLSX: intenta cargar primero desde el mismo repositorio (xlsx.full.min.js).
-  // Si no existe, intenta CDN. Si la red bloquea el CDN, la app sigue funcionando (solo falla la importación).
-  (function(){
-    const s=document.createElement('script');
-    s.defer=true;
-    s.src='xlsx.full.min.js';
-    s.onerror=()=>{ 
-      const c=document.createElement('script'); 
-      c.defer=true; 
-      c.src='https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js'; 
-      document.head.appendChild(c);
-    };
-    document.head.appendChild(s);
-  })();
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js" defer></script>
 </head>
 <body>
 <header>
@@ -151,41 +125,8 @@
           <input id="cfgNext" type="number" min="1" />
           <label>IVA (%)</label>
           <input id="cfgIva" type="number" min="0" max="100" step="0.01" />
-          <label>NIT</label>
-          <input id="cfgNit" placeholder="Ej: 900.XXX.XXX-X" />
-          <label>Logo (nombre del archivo)</label>
-          <input id="cfgLogo" placeholder="logo-cf.png" />
           <label>Datos de la empresa (para impresión)</label>
           <textarea id="cfgCompany" placeholder="CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"></textarea>
-<label>Fuente</label>
-<select id="cfgFont">
-  <option value="system-ui">Sistema (recomendada)</option>
-  <option value="Segoe UI">Segoe UI</option>
-  <option value="Arial">Arial</option>
-  <option value="Calibri">Calibri</option>
-  <option value="Tahoma">Tahoma</option>
-  <option value="Verdana">Verdana</option>
-  <option value="Georgia">Georgia</option>
-</select>
-
-<label>Color de barras (encabezados)</label>
-<input id="cfgBarColor" type="color" />
-
-<label>Color de márgenes / bordes</label>
-<input id="cfgBorderColor" type="color" />
-
-<label>Mostrar año al final del consecutivo</label>
-<select id="cfgShowYear">
-  <option value="1">Sí</option>
-  <option value="0">No</option>
-</select>
-
-<label>Año (opcional; vacío = año actual)</label>
-<input id="cfgYear" type="number" min="2000" max="2100" placeholder="Ej: 2026" />
-
-<label>Mensaje pie de página (impresión)</label>
-<input id="cfgFooter" placeholder="formato de cotización de servicios no contratados" />
-
           <div class="btnbar" style="margin-top:12px">
             <button id="btnSaveConfig" class="ok">Guardar configuración</button>
             <button id="btnFactoryReset" class="danger">Borrar TODO (reinicio)</button>
@@ -287,7 +228,7 @@
           </div>
 
           <label>Ítems</label>
-          <div style="overflow:auto;border:1px solid var(--border);border-radius:12px">
+          <div style="overflow:auto;border:1px solid rgba(255,255,255,.10);border-radius:12px">
             <table id="itemsTable">
               <thead>
                 <tr>
@@ -311,7 +252,6 @@
 
           <div style="margin-top:10px">
             <div class="muted" id="printHeader"></div>
-            <div class="muted" id="printFooter"></div>
           </div>
         </div>
 
@@ -372,15 +312,6 @@
   };
   const todayISO = ()=> new Date().toISOString().slice(0,10);
   const nowISO = ()=> new Date().toISOString();
-
-  function escapeHtml(str){
-    return String(str??'')
-      .replaceAll('&','&amp;')
-      .replaceAll('<','&lt;')
-      .replaceAll('>','&gt;')
-      .replaceAll('"','&quot;')
-      .replaceAll("'",'&#39;');
-  }
 
   // Simple SHA-256 for local passwords
   async function sha256(text){
@@ -452,22 +383,13 @@
   let CURRENT = { type:null, id:null }; // quote|client|product
 
   const defaultSettings = ()=>({
-  id:'singleton',
-  prefix:'CC-CF',
-  pad:5,                 // CC-CF + 4 ceros + consecutivo (ej: CC-CF00001)
-  nextSeq:1,
-  ivaPct:0,
-  nit:'891411743-0',
-  logo:'logo-cf.png',
-  // Branding configurable (sin tocar código)
-  fontFamily:'system-ui',
-  barColor:'#4ea1ff',
-  borderColor:'#203050',
-  showYearSuffix:true,
-  yearOverride:'',        // vacío = año actual
-  footerText:'formato de cotización de servicios no contratados',
-  company:"CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
-});
+    id:'singleton',
+    prefix:'CF',
+    pad:4,
+    nextSeq:1,
+    ivaPct:0,
+    company:"CLINICA DE FRACTURAS S.A.S\nAV JUAN B GUTIERREZ # 18-60 PEREIRA - RISARALDA"
+  });
 
   const defaultAdminUser = async ()=>({
     id:'admin',
@@ -477,56 +399,9 @@
   });
 
   function year(){ return new Date().getFullYear(); }
-function makeQuoteNumber(seq){
-  const s = String(seq).padStart(Number(SETTINGS.pad||5), '0');
-  const useYear = (SETTINGS.showYearSuffix !== false);
-  const y = (SETTINGS.yearOverride||'').toString().trim();
-  const yy = y ? y : String(year());
-  return `${SETTINGS.prefix}${s}${useYear ? `-${yy}` : ''}`;
-}
-
-${s}-${year()}`;
-  }
-
-function applyBranding(){
-  try{
-    const root = document.documentElement;
-    const font = (SETTINGS.fontFamily||'system-ui').trim();
-    const bar = (SETTINGS.barColor||'#4ea1ff').trim();
-    const border = (SETTINGS.borderColor||'#203050').trim();
-    root.style.setProperty('--font', font);
-    root.style.setProperty('--bar', bar);
-    root.style.setProperty('--border', border);
-    // Reusar --accent para coherencia visual
-    root.style.setProperty('--accent', bar);
-  }catch(_){}
-}
-
-function renderPrintFooter(){
-  const el = $('printFooter');
-  if(!el) return;
-  el.textContent = (SETTINGS.footerText||'').trim();
-}
-
-  function renderPrintHeader(){
-    const el = $('printHeader');
-    if(!el) return;
-    const logo = (SETTINGS.logo||'').trim();
-    const nit = (SETTINGS.nit||'').trim();
-    const lines = String(SETTINGS.company||'').split('\n').map(s=>s.trim()).filter(Boolean);
-    const title = lines.shift() || 'CLÍNICA DE FRACTURAS S.A.S';
-    const restHtml = lines.map(l=>`<div class="ph-line">${escapeHtml(l)}</div>`).join('');
-
-    el.innerHTML = `
-      <div class="ph-wrap">
-        ${logo ? `<img class="ph-logo" src="${escapeHtml(logo)}" alt="Logo">` : ''}
-        <div class="ph-text">
-          <div class="ph-title">${escapeHtml(title)}</div>
-          ${nit ? `<div class="ph-nit"><strong>NIT:</strong> ${escapeHtml(nit)}</div>` : ''}
-          ${restHtml}
-        </div>
-      </div>`;
-    renderPrintFooter();
+  function makeQuoteNumber(seq){
+    const s = String(seq).padStart(Number(SETTINGS.pad||4), '0');
+    return `${SETTINGS.prefix}${s}-${year()}`;
   }
 
   function assertRole(required){
@@ -754,7 +629,7 @@ function renderPrintFooter(){
     $('kpiSubtotal').textContent = fmtMoney(t.subtotal);
     $('kpiIva').textContent = fmtMoney(t.iva);
     $('kpiTotal').textContent = fmtMoney(t.total);
-    renderPrintHeader();
+    $('printHeader').textContent = SETTINGS.company;
   }
 
   function renderQuote(q){
@@ -824,8 +699,6 @@ function renderPrintFooter(){
         if(isNew){
           SETTINGS.nextSeq = Number(SETTINGS.nextSeq||1) + 1;
           await idbPut('settings', SETTINGS);
-      applyBranding();
-      renderPrintFooter();
         }
 
         await refreshLists();
@@ -850,7 +723,7 @@ function renderPrintFooter(){
 
     $('btnPrint').onclick = ()=>{
       // Show printable company header within editor
-      renderPrintHeader();
+      $('printHeader').textContent = SETTINGS.company;
       window.print();
     };
   }
@@ -976,17 +849,7 @@ function renderPrintFooter(){
     $('cfgPad').value = SETTINGS.pad || 4;
     $('cfgNext').value = SETTINGS.nextSeq || 1;
     $('cfgIva').value = SETTINGS.ivaPct || 0;
-    $('cfgNit').value = SETTINGS.nit || '';
-    $('cfgLogo').value = SETTINGS.logo || 'logo-cf.png';
     $('cfgCompany').value = SETTINGS.company || '';
-    $('cfgFont').value = SETTINGS.fontFamily || 'system-ui';
-    $('cfgBarColor').value = SETTINGS.barColor || '#4ea1ff';
-    $('cfgBorderColor').value = SETTINGS.borderColor || '#203050';
-    $('cfgShowYear').value = (SETTINGS.showYearSuffix===false ? '0' : '1');
-    $('cfgYear').value = SETTINGS.yearOverride || '';
-    $('cfgFooter').value = SETTINGS.footerText || 'formato de cotización de servicios no contratados';
-    applyBranding();
-    renderPrintFooter();
   }
 
   async function saveConfig(){
@@ -996,13 +859,8 @@ function renderPrintFooter(){
       SETTINGS.pad = Number($('cfgPad').value||4);
       SETTINGS.nextSeq = Number($('cfgNext').value||1);
       SETTINGS.ivaPct = Number($('cfgIva').value||0);
-      SETTINGS.nit = $('cfgNit').value.trim();
-      SETTINGS.logo = $('cfgLogo').value.trim() || 'logo-cf.png';
       SETTINGS.company = $('cfgCompany').value || '';
       await idbPut('settings', SETTINGS);
-      applyBranding();
-      renderPrintFooter();
-      renderPrintHeader();
       alert('Configuración guardada.');
     }catch(err){ alert(err.message||String(err)); }
   }
@@ -1254,8 +1112,6 @@ function renderPrintFooter(){
     if(!SETTINGS){
       SETTINGS = defaultSettings();
       await idbPut('settings', SETTINGS);
-      applyBranding();
-      renderPrintFooter();
     }
 
     const users = await idbAll('users');
@@ -1264,7 +1120,6 @@ function renderPrintFooter(){
     }
 
     loadConfigUI();
-    renderPrintHeader();
     wireTabs();
     wireNavButtons();
 
@@ -1274,21 +1129,12 @@ function renderPrintFooter(){
     $('statusPill').textContent = 'Sin sesión (usa admin/admin)';
   }
 
-      async function safeInit(){
-      try{
-        await init();
-      }catch(err){
-        console.error(err);
-        $('statusPill').textContent = 'Error al iniciar';
-        // Recuperación automática (opción 2): reinicia datos locales para salir del bloqueo.
-        {
-          try{ indexedDB.deleteDatabase(DB_NAME); }catch(_){}
-          try{ localStorage.clear(); }catch(_){}
-          location.reload();
-      }
-    }
-    safeInit();
-  })();
+  init().catch(err=>{
+    console.error(err);
+    $('statusPill').textContent = 'Error al iniciar';
+    alert('Error al iniciar: ' + (err.message||String(err)));
+  });
+})();
 </script>
 </body>
 </html>
